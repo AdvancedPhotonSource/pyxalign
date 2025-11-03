@@ -1,4 +1,4 @@
-Data Structures
+data_structures
 =================
 
 .. automodule:: pyxalign.data_structures

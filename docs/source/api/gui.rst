@@ -1,4 +1,4 @@
-GUI
+gui
 ============
 
 .. automodule:: pyxalign.gui

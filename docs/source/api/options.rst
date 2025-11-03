@@ -1,4 +1,4 @@
-Options
+options
 ============
 
 .. automodule:: pyxalign.options

@@ -1,4 +1,4 @@
-Enumerations
+enums
 ============
 
 .. automodule:: pyxalign.enums
