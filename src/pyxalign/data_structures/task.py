@@ -1,7 +1,7 @@
 from typing import Optional
 import numpy as np
 import h5py
-from PyQt5.QtWidgets import QApplication
+import copy
 
 from pyxalign import gpu_utils
 from pyxalign.api.options.alignment import ProjectionMatchingOptions
@@ -30,10 +30,12 @@ from pyxalign.timing.timer_utils import clear_timer_globals
 class LaminographyAlignmentTask:
     def __init__(
         self,
-        options: AlignmentTaskOptions,
+        options: Optional[AlignmentTaskOptions] = None,
         complex_projections: Optional[ComplexProjections] = None,
         phase_projections: Optional[PhaseProjections] = None,
     ):
+        if options is None:
+            options = AlignmentTaskOptions()
         self.options = options
         if phase_projections is None and complex_projections is None:
             raise Exception(
@@ -143,6 +145,10 @@ class LaminographyAlignmentTask:
             self.complex_projections, include_projections_copy=False
         )
         self.phase_projections = PhaseProjections(projections=unwrapped_projections, **kwargs)
+        # update with dropped scan numbers, angles, and file paths from complex projections
+        self.phase_projections.dropped_scan_numbers = copy.copy(self.complex_projections.dropped_scan_numbers)
+        self.phase_projections.dropped_angles = copy.copy(self.complex_projections.dropped_angles)
+        self.phase_projections.dropped_file_paths = copy.copy(self.complex_projections.dropped_file_paths)
 
     def save_task(self, file_path: str, exclude: list[str] = []):
         save_attr_strings = ["complex_projections", "phase_projections"]
