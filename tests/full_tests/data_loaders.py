@@ -1,4 +1,3 @@
-# this file currently only tests the pear v3 loader
 import os
 import multiprocessing as mp
 from pyxalign.io.loaders.base import StandardData

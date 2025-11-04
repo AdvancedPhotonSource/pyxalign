@@ -53,7 +53,7 @@ class StandardData:
         # Force all angles to be in a 360 degree range
         # I like to keep values similar to raw data when possible, so I only
         # apply mod if the range is outside the 360 degree range
-        if np.max(self.angles) - np.min(self.angles):
+        if (np.max(self.angles) - np.min(self.angles)) > 360:
             self.angles %= 360
 
     def drop_scans(self, scan_numbers_to_drop: list[int]):
