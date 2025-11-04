@@ -110,6 +110,7 @@ class ProjectionMatchingAligner(Aligner):
         self.initialize_attributes()
         self.initialize_shifters()
         tukey_window, circulo = self.initialize_windows()
+        self.circulo = circulo
 
         print(f"Starting projection-matching alignment downsampling = {self.scale}...")
         if self.print_updates:
@@ -156,22 +157,8 @@ class ProjectionMatchingAligner(Aligner):
             n_pix=self.n_pix,
             update_geometries=update_geometries,
         )
-
-        # post processing of 3D volume
-        if self.options.reconstruction_mask.enabled:
-            self.aligned_projections.volume.apply_circular_window(circulo)
-        self.regularize_reconstruction()
-        self.apply_positivity_constraint()
-        if (
-            self.options.positivity_constraint.enabled
-            or self.options.regularization.enabled
-            or self.options.reconstruction_mask.enabled
-        ):
-            # Store the updated reconstruction
-            astra.data3d.store(
-                self.aligned_projections.volume.astra_config["ReconstructionDataId"],
-                self.aligned_projections.volume.data,
-            )
+        # optionally apply mask, regularization, and thresholding to volume
+        self.post_process_volume()
 
         if self.iteration == self.options.iterations:
             return
@@ -527,9 +514,30 @@ class ProjectionMatchingAligner(Aligner):
     @timer()
     def apply_positivity_constraint(self):
         if self.options.positivity_constraint.enabled:
-            thresh = self.options.positivity_constraint.threshold
-            idx = self.aligned_projections.volume.data < thresh
-            self.aligned_projections.volume.data[idx] = thresh
+            self.aligned_projections.volume.apply_positivity_constraint(
+                self.options.positivity_constraint.threshold
+            )
+
+    @timer()
+    def post_process_volume(self):
+        # apply circular mask to 3D volume
+        if self.options.reconstruction_mask.enabled:
+            self.aligned_projections.volume.apply_circular_window(self.circulo)
+        # regularize the reconstruction
+        self.regularize_reconstruction()
+        # threshold
+        self.apply_positivity_constraint()
+
+        # update the stored reconstruction
+        if (
+            self.options.positivity_constraint.enabled
+            or self.options.regularization.enabled
+            or self.options.reconstruction_mask.enabled
+        ):
+            astra.data3d.store(
+                self.aligned_projections.volume.astra_config["ReconstructionDataId"],
+                self.aligned_projections.volume.data,
+            )
 
     @timer()
     def initialize_arrays(self):
@@ -969,6 +977,8 @@ class ProjectionMatchingAligner(Aligner):
                 n_pix=self.n_pix,
                 update_geometries=True,
             )
+            self.post_process_volume()
+
             # get forward projections at new laminography angle
             self.aligned_projections.volume.get_forward_projection(
                 pinned_forward_projection=self.pinned_forward_projection,

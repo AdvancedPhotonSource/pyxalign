@@ -250,6 +250,11 @@ class Volume:
             radial_smooth=radial_smooth,
         ).astype(r_type)
 
+    @timer()
+    def apply_positivity_constraint(self, threshold: float = 0):
+        idx = self.data < threshold
+        self.data[idx] = threshold
+
     def plot_data(
         self,
         options: Optional[PlotDataOptions] = None,
