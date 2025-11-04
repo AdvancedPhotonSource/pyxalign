@@ -1,8 +1,7 @@
 from IPython import get_ipython
+import pyqtgraph as pg
 
-# from .master import launch_master_gui
-
-# __all__ = ["interactive"]
+pg.setConfigOption("background", "#242729")
 
 
 ipython = get_ipython()

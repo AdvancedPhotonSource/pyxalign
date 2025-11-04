@@ -9,6 +9,7 @@ import cupy as cp
 import traceback
 import bisect
 from pyxalign.api.options.plotting import ArrayViewerOptions
+from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -43,10 +44,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-# New import for using pyqtgraph
 import pyqtgraph as pg
-
-from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 
 P = ParamSpec("P")
 R = TypeVar("R")
