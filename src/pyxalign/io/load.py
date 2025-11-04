@@ -95,11 +95,14 @@ def load_projections_object(
             function_type=staged_shift_function_type,
         )
 
-    # Create Projections object
-    if "file_paths" in proj_h5_obj.keys():
+    # get filepaths if they were saved
+    try:
         file_paths = load_list_of_arrays(proj_h5_obj, "file_paths")
-    else:
+    except Exception as ex:
         file_paths = None
+
+    # Create Projections object
+
     projections = projection_class(
         projections=proj_h5_obj["data"][()],
         angles=proj_h5_obj["angles"][()],
