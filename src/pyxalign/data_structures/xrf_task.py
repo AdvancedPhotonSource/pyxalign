@@ -2,6 +2,7 @@ from typing import Optional
 import numpy as np
 import h5py
 import copy
+import os
 
 # from pyxalign.data_structures.task import LaminographyAlignmentTask
 from pyxalign.alignment.cross_correlation import CrossCorrelationAligner
@@ -29,6 +30,7 @@ class XRFTask:
         alignment_options: Optional[AlignmentTaskOptions] = None,
         center_of_rotation: Optional[np.ndarray] = None,
         masks: Optional[np.ndarray] = None,
+        file_paths: Optional[list[str]] = None,
         _initialize_from_loaded_data: bool = False,
         _loaded_projections_dict: Optional[dict[str, XRFProjections]] = None,
     ):
@@ -45,9 +47,17 @@ class XRFTask:
             self.projections_dict: dict[str, XRFProjections] = {}
             self.channels = xrf_array_dict.keys()
             self._primary_channel = primary_channel
-            self.create_xrf_projections_object(
-                xrf_array_dict, angles, scan_numbers, center_of_rotation, masks
-            )
+            # Make a projections object for each channel
+            for channel in self.channels:
+                self.projections_dict[channel] = XRFProjections(
+                    projections=xrf_array_dict[channel],
+                    angles=copy.copy(angles),
+                    options=self.projection_options,
+                    scan_numbers=copy.copy(scan_numbers),
+                    center_of_rotation=copy.copy(center_of_rotation),
+                    masks=copy.copy(masks),
+                    file_paths=copy.copy(file_paths),
+                )
         elif _initialize_from_loaded_data:
             # initialize from dict of projections
             self.projections_dict = _loaded_projections_dict
@@ -66,32 +76,6 @@ class XRFTask:
         self.pma_object = None
         self.pma_gui_list = []
 
-    def create_xrf_projections_object(
-        self,
-        xrf_array_dict: dict[str, np.ndarray],
-        angles: np.ndarray,
-        scan_numbers: np.ndarray,
-        center_of_rotation: Optional[np.ndarray] = None,
-        masks: Optional[np.ndarray] = None,
-    ):
-        for channel in self.channels:
-            # Make a new projections object
-            self.projections_dict[channel] = XRFProjections(
-                projections=xrf_array_dict[channel],
-                angles=copy.copy(angles),
-                options=self.projection_options,
-                scan_numbers=copy.copy(scan_numbers),
-                center_of_rotation=copy.copy(center_of_rotation),
-                masks=copy.copy(masks),
-                # probe_positions=None,
-                # probe=None,
-                # skip_pre_processing=False,
-                # add_center_offset_to_positions
-                # shift_manager=
-                # transform_tracker=
-            )
-
-    # angles
     @property
     def angles(self) -> np.ndarray:
         # do not allow in-place editing
@@ -155,6 +139,16 @@ class XRFTask:
     def drop_projections_from_all_channels(self, remove_scans: list[int]):
         for _, projections in self.projections_dict.items():
             projections.drop_projections(remove_scans=remove_scans)
+
+    def get_3D_reconstructions_for_all_channels(self):
+        for _, projections in self.projections_dict.items():
+            projections.get_3D_reconstruction(True)
+
+    def save_volumes_as_tiffs(self, results_folder: str, file_prefix: str):
+        for channel, projections in self.projections_dict.items():
+            projections.volume.save_as_tiff(
+                os.path.join(results_folder, file_prefix + channel + ".tiff")
+            )
 
     def pin_all_arrays(self):
         for _, projections in self.projections_dict.items():

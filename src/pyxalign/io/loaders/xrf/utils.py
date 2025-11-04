@@ -17,6 +17,7 @@ def load_xrf_experiment(
     extra_PVs_dict = {}
     scan_file_dict = get_scan_file_dict(file_names, options._mda_file_pattern)
     scan_file_dict = remove_scans_from_dict(scan_file_dict, options.base.scan_start, options.base.scan_end, options.base.scan_list)
+    file_paths = {k: os.path.join(options.base.folder, v) for k, v in scan_file_dict.items()}
 
     # Load data from each file
     for scan_number, file_name in scan_file_dict.items():
@@ -27,30 +28,47 @@ def load_xrf_experiment(
     if np.all([a == 0 for a in angles]):
         print("WARNING: no angle data found; enter angle data manually.")
 
+    # try to get laminography angle
+    scan_numbers = np.array(list(all_counts_dict.keys()))
+    try:
+        lamino_angle = 90 - float(extra_PVs[options._lamino_angle_pv_string])
+    except Exception as ex:
+        print("Laminography angle not found")
+        lamino_angle = None
+
+
     # Make StandardData object for each xrf projection
     channels = all_counts_dict[scan_number].keys()
-    scan_numbers = np.array(list(all_counts_dict.keys()))
     angles = np.array(angles)
     channel_data_objects = {}
     for channel in channels:
+        projections_dict = {scan_num: v[channel] for scan_num, v in all_counts_dict.items()}
         channel_data_objects[channel] = StandardData(
-            projections={scan_num: v[channel] for scan_num, v in all_counts_dict.items()},
+            projections=projections_dict,
             angles=angles * 1,
             scan_numbers=scan_numbers * 1,
+            file_paths=file_paths,
+            lamino_angle=lamino_angle,
         )
         # Drop inconsistent sizes for each channel
         remove_inconsistent_sizes(channel_data_objects[channel])
     return channel_data_objects, extra_PVs_dict
 
 
-def remove_scans_from_dict(scan_file_dict: dict, scan_start: int, scan_end: int, scan_list: list[int]):
+def remove_scans_from_dict(
+    scan_file_dict: dict, scan_start: int, scan_end: int, scan_list: list[int]
+):
     if scan_start is None:
         scan_start = 0
     if scan_end is None:
         scan_end = np.max(list(scan_file_dict.keys()))
     if scan_list is None:
         scan_list = range(scan_start, scan_end + 1)
-    return {k: v for k, v in scan_file_dict.items() if (k >= scan_start and k <= scan_end and k in scan_list)}
+    return {
+        k: v
+        for k, v in scan_file_dict.items()
+        if (k >= scan_start and k <= scan_end and k in scan_list)
+    }
 
 
 def get_scan_file_dict(file_names: list[str], file_pattern: str) -> dict:  # -> list[int]:

@@ -98,6 +98,8 @@ class StandardDataViewer(QWidget):
             self.indexing_widget.play_button,
             self.indexing_widget.play_timer,
         )
+        self.spinbox.setMinimum(0)
+        self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self._on_index_changed)
         self.spinbox.valueChanged.connect(self._on_index_changed)
         self.play_button.clicked.connect(self._on_play_clicked)
@@ -200,9 +202,9 @@ class StandardDataViewer(QWidget):
 
         # Fill table with [Scan #, Angle]
         self.scan_angles_table.setRowCount(num_scans)
+        has_file_paths = self.data.file_paths is not None
         for i, scan_num in enumerate(self.data.scan_numbers):
             angle_val = self.data.angles[i] if i < len(self.data.angles) else 0.0
-            file_path = self.data.file_paths[scan_num]
 
             # Column 0: Scan #
             sn_item = QTableWidgetItem(str(scan_num))
@@ -213,8 +215,10 @@ class StandardDataViewer(QWidget):
             self.scan_angles_table.setItem(i, 1, angle_item)
 
             # Column 2: Filepath
-            file_path_item = QTableWidgetItem(file_path)
-            self.scan_angles_table.setItem(i, 2, file_path_item)
+            if has_file_paths:
+                file_path = self.data.file_paths[scan_num]
+                file_path_item = QTableWidgetItem(file_path)
+                self.scan_angles_table.setItem(i, 2, file_path_item)
             # file_path_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
 
 

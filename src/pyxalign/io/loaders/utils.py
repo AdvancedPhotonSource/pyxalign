@@ -409,6 +409,7 @@ def convert_projection_dict_to_array(
     repair_orientation: bool = False,
     pad_mode: str = "constant",
     pad_with_mode: bool = False,
+    _print_progress: bool = True,
 ) -> np.ndarray:
     """Function that creates a 3D array from a dictionary of 2D arrays.
     Each array will be padded (or cropped) so that its new dimensions 
@@ -461,16 +462,19 @@ def convert_projection_dict_to_array(
     # Force new shape to be compatible with downsampling functions with
     # downsampling up to divisor
     new_shape = (np.ceil(new_shape / (divisor * 2)) * (divisor * 2)).astype(int)
-    print(f"Projection array shape: {new_shape}")
+    if _print_progress:
+        print(f"Projection array shape: {new_shape}")
 
     # Initialize the projections array
     k = list(projections.keys())[0]
     projections_array = np.zeros(shape=(len(projections), *new_shape), dtype=projections[k].dtype)
 
     # Fix projections dimensions through cropping and padding
-    print("Fixing projections dimensions...")
-    # for projection in tqdm(projections.values()):
-    for i, projection in tqdm(enumerate(projections.values()), total=len(projections)):
+    loop_over = enumerate(projections.values())
+    if _print_progress:
+        loop_over = tqdm(loop_over, total=len(projections))
+        print("Fixing projections dimensions...")
+    for i, projection in loop_over:
         if pad_with_mode:
             pad_value = stats.mode(np.abs(projection), axis=None).mode
         else:
@@ -478,7 +482,8 @@ def convert_projection_dict_to_array(
         projections_array[i] = image_crop_pad(
             projection, new_shape[0], new_shape[1], pad_mode, constant_values=pad_value
         )
-    print("Fixing projections dimensions...Completed")
+    if _print_progress:
+        print("Fixing projections dimensions...Completed")
     return projections_array
 
 

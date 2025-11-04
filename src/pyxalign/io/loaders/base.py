@@ -23,6 +23,7 @@ class StandardData:
         probe_positions: Optional[dict[int, np.ndarray]] = None,
         probe: Optional[np.ndarray] = None,
         pixel_size: Optional[float] = None,
+        lamino_angle: Optional[float] = None,
     ):
         """Initialize the StandardData object with projection data and
         metadata.
@@ -40,6 +41,8 @@ class StandardData:
             probe (Optional[np.ndarray]): Optional probe data.
             pixel_size (Optional[float]): Optional pixel size for the 
                 projections.
+            lamino_angle (Optional[float]): Optional laminography angle
+                of the experiment.
 
         """
         self.projections = projections
@@ -49,6 +52,7 @@ class StandardData:
         self.probe_positions = probe_positions
         self.probe = probe
         self.pixel_size = pixel_size
+        self.lamino_angle = lamino_angle
 
         # Force all angles to be in a 360 degree range
         # I like to keep values similar to raw data when possible, so I only
@@ -87,7 +91,10 @@ class StandardData:
         """
         scan_number = list(self.scan_numbers)[index]
         plt.title(f"Scan {scan_number}")
-        plt.imshow(np.angle(self.projections[scan_number]), cmap="bone")
+        plot_array = self.projections[scan_number]
+        if np.iscomplexobj(self.projections[scan_number]):
+            plot_array = np.angle(plot_array)
+        plt.imshow(plot_array, cmap="bone")
         plt.show()
 
     def get_minimum_size_for_projection_array(self) -> np.ndarray:

@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 import numpy as np
+import tqdm
 from pyxalign.io.loaders.base import StandardData
 import pyxalign.io.loaders.xrf.options as xrf_options
 from pyxalign.io.loaders.xrf.utils import load_xrf_experiment
@@ -90,12 +91,14 @@ def convert_xrf_projection_dicts_to_arrays(
     """
 
     xrf_array_dict = {}
-    for channel, standard_data in xrf_standard_data_dict.items():
+    for channel, standard_data in tqdm.tqdm(xrf_standard_data_dict.items()):
         xrf_array_dict[channel] = convert_projection_dict_to_array(
             standard_data.projections,
             new_shape=new_shape,
             pad_mode=pad_mode,
             pad_with_mode=pad_with_mode,
+            _print_progress=False,
         )
+    print(f"Projection array shape: {xrf_array_dict[channel].shape}")
 
     return xrf_array_dict

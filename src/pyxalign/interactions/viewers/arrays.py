@@ -191,15 +191,15 @@ class ProjectionViewer(MultiThreadedWidget):
 
         # setup control panel on the left
         left_panel = QWidget()
-        left_panel_layout = QVBoxLayout()
-        left_panel.setLayout(left_panel_layout)
+        self.left_panel_layout = QVBoxLayout()
+        left_panel.setLayout(self.left_panel_layout)
         array_view_layout.addWidget(left_panel)
-        left_panel_layout.addWidget(self.button_group_box)
+        self.left_panel_layout.addWidget(self.button_group_box)
         if not display_only:
-            left_panel_layout.addWidget(open_scan_removal_button)
-            left_panel_layout.addWidget(open_mask_creation_button)
-            left_panel_layout.addWidget(open_options_editor_button)
-        left_panel_layout.addSpacerItem(
+            self.left_panel_layout.addWidget(open_scan_removal_button)
+            self.left_panel_layout.addWidget(open_mask_creation_button)
+            self.left_panel_layout.addWidget(open_options_editor_button)
+        self.left_panel_layout.addSpacerItem(
             QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
         )
 
@@ -349,9 +349,11 @@ class ScanRemovalTool(QWidget):
         self,
         projections: "p.Projections",
         array_viewer: ArrayViewer,
+        projection_drop_function: Callable,  # self.projections.drop_projections
         parent=None,
     ):
         super().__init__(parent=parent)
+        self.projection_drop_function = projection_drop_function
         self.setWindowTitle("Scan Removal Tool")
         self.projections = projections
 
@@ -445,7 +447,7 @@ class ScanRemovalTool(QWidget):
             ]
         # drop projections
         drop_projections_wrapped = loading_bar_wrapper("Removing projections...")(
-            self.projections.drop_projections
+            self.projection_drop_function
         )
         drop_projections_wrapped(remove_scan_numbers)
         # clear rows

@@ -3,7 +3,7 @@ from pyxalign.api.maps import get_process_func_by_enum
 from pyxalign.api.options.plotting import ArrayViewerOptions, ProjectionViewerOptions
 import pyxalign.data_structures.projections as p
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
-from pyxalign.interactions.viewers.arrays import ProjectionViewer, VolumeViewer
+from pyxalign.interactions.viewers.arrays import ProjectionViewer, ScanRemovalTool, VolumeViewer
 from pyxalign.interactions.viewers.base import ArrayViewer, MultiThreadedWidget
 import pyxalign.data_structures.xrf_task as x
 from PyQt5.QtWidgets import (
@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QScrollArea,
     QApplication,
+    QPushButton,
 )
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import (
@@ -99,6 +100,7 @@ class XRFProjectionsViewer(MultiThreadedWidget):
         )
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.xrf_task = xrf_task
+        self.projection_dropping_widget = None
         self.resize(1460, 850)
 
         self.channel_selector_widget = XRFChannelSelectorWidget(
@@ -115,11 +117,37 @@ class XRFProjectionsViewer(MultiThreadedWidget):
             include_shifts=include_shifts,
         )
 
+        # scan removal tool
+        open_scan_removal_button = QPushButton("Open Scan Removal Window")
+        open_scan_removal_button.clicked.connect(self.open_scan_removal_window)
+
+        insert_position = self.projection_viewer.left_panel_layout.count() - 1
+        self.projection_viewer.left_panel_layout.insertWidget(
+            insert_position, open_scan_removal_button
+        )
+        # self.projection_viewer.left_panel_layout.addWidget(open_scan_removal_button)
+
+        #
+        left_layout = QVBoxLayout()
+        left_layout.addWidget(self.channel_selector_widget)
+        # left_layout.addWidget(open_scan_removal_button)
+        # left_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
         # Add to layout
-        layout = QHBoxLayout()
-        self.setLayout(layout)
-        layout.addWidget(self.channel_selector_widget)
-        layout.addWidget(self.projection_viewer)
+        horizontal_layout = QHBoxLayout()
+        self.setLayout(horizontal_layout)
+        # horizontal_layout.addWidget(self.channel_selector_widget)
+        horizontal_layout.addLayout(left_layout)
+        horizontal_layout.addWidget(self.projection_viewer)
+
+    def open_scan_removal_window(self):
+        if self.projection_dropping_widget is None:
+            self.projection_dropping_widget = ScanRemovalTool(
+                self.xrf_task.projections_dict[self.xrf_task.primary_channel],
+                self.projection_viewer.array_viewer,
+                projection_drop_function=self.xrf_task.drop_projections_from_all_channels,
+            )
+        self.projection_dropping_widget.show()
 
     def change_projection_viewer_channel(self, button: QRadioButton):
         current_channel = button.text()
