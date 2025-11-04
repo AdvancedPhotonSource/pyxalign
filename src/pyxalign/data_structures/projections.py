@@ -35,7 +35,7 @@ from pyxalign.api.options.transform import (
 import pyxalign.gpu_utils as gpu_utils
 from pyxalign.gpu_wrapper import device_handling_wrapper
 from pyxalign.data_structures.volume import Volume
-from pyxalign.mask import build_masks_from_threshold
+from pyxalign.mask import build_masks_from_threshold, get_simulated_probe_for_masks
 from pyxalign.io.utils import load_list_of_arrays
 from pyxalign.io.save import save_generic_data_structure_to_h5
 
@@ -381,9 +381,15 @@ class Projections:
 
     @timer()
     def get_masks_from_probe_positions(self):
+        if self.options.mask_from_positions.use_simulated_probe:
+            probe = get_simulated_probe_for_masks(
+                self.probe, self.options.mask_from_positions.probe
+            )
+        else:
+            probe = self.probe
         self.masks = build_masks_from_threshold(
             self.data.shape,
-            self.probe,
+            probe,
             self.probe_positions.data,
             self.options.mask_from_positions.threshold,
         )

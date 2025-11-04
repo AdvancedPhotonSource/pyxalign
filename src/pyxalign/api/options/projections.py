@@ -88,7 +88,7 @@ class VolumeWidthOptions:
 
 
 @dataclasses.dataclass
-class SimulatedProbe:
+class SimulatedProbeOptions:
     """
     Parameters for creating a gaussian probe
     """
@@ -114,7 +114,7 @@ class ProbePositionMaskOptions:
     use the probe in the Projections object.
     """
 
-    probe: SimulatedProbe = field(default_factory=SimulatedProbe)
+    probe: SimulatedProbeOptions = field(default_factory=SimulatedProbeOptions)
 
 
 @dataclasses.dataclass

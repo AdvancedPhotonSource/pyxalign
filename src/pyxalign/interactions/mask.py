@@ -15,16 +15,12 @@ from PyQt5.QtWidgets import (
     QPushButton,
 )
 
-from pyxalign.api.enums import RoundType
 import pyxalign.data_structures.projections as p
 from pyxalign.interactions.utils.loading_display_tools import loading_bar_wrapper
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
-from pyxalign.mask import place_patches_fourier_batch
+from pyxalign.mask import get_simulated_probe_for_masks, place_patches_fourier_batch
 from pyxalign.interactions.viewers.base import IndexSelectorWidget
 from pyxalign.mask import clip_masks
-from pyxalign.model_functions import symmetric_gaussian_2d
-from pyxalign.transformations.helpers import round_to_divisor
-from pyxalign.api import constants
 
 """
 Interactive mask threshold selector based on pyqtgraph and the shared
@@ -153,23 +149,14 @@ class ThresholdSelector(QWidget):
         self.projections = projections
         self.options = self.projections.options.mask_from_positions
 
-        # use simulated probe if specified by options; this typically
-        # gives better results
         if self.options.use_simulated_probe:
-            shape = self.projections.probe.shape
-            probe_width = round_to_divisor(
-                shape[0] * self.options.probe.fractional_width,
-                round_type=RoundType.NEAREST,
-                divisor=constants.divisor
-            )
-            probe = symmetric_gaussian_2d(shape, amplitude=1, sigma=probe_width)
+            probe = get_simulated_probe_for_masks(self.projections.probe, self.options.probe)
         else:
             probe = self.projections.probe
-
         # Precompute masks (floating-point values)
-        load_bar_func_wrapper = loading_bar_wrapper("Initializing masks...")(
-            place_patches_fourier_batch
-        )
+        load_bar_func_wrapper = loading_bar_wrapper(
+            "Initializing masks...", block_all_windows=True
+        )(place_patches_fourier_batch)
         masks = load_bar_func_wrapper(
             self.projections.data.shape,
             probe,
