@@ -27,6 +27,7 @@ from .projections import (
     EstimateCenterOptions,
     ProjectionOptions,
     ProjectionTransformOptions,
+    ProbePositionMaskOptions,
 )
 from .reconstruct import ReconstructOptions, FilterOptions, AstraOptions, GeometryOptions
 from .task import AlignmentTaskOptions
@@ -70,11 +71,13 @@ __all__ = [
     "ReconstructionMaskOptions",
     "StepMomentum",
     "RefineGeometryOptions",
+    "PositivityConstraint"
     # Projection options
     "CoordinateSearchOptions",
     "EstimateCenterOptions",
     "ProjectionOptions",
     "ProjectionTransformOptions",
+    "ProbePositionMaskOptions",
     # Reconstruction options
     "ReconstructOptions",
     "FilterOptions",
