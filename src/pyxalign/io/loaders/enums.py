@@ -12,3 +12,30 @@ class ExperimentType(StrEnum):
     BEAMLINE_2IDE_PTYCHO = auto()
     BEAMLINE_2IDD_PTYCHO = auto()
     BEAMLINE_2IDE_XRF = auto()
+
+
+class MDAFilePatterns(StrEnum):
+    """Possible file patterns of the files in the mda folder.
+
+    These patterns allow the loading functions to correctly extract the
+    scan number.
+
+    """
+
+    XFM_MDA_H5 = r"2xfm_(\d+)\.mda.h5"
+    BNP_FLY_MDA = r"bnp_fly(\d+)\.mda"
+
+
+class RotationAnglePVStrings(StrEnum):
+    """Possible values of strings used for accessing the rotation angle
+    from the extra PVs dict."""
+
+    XFM_M60_VAL = "2xfm:m60.VAL"
+    IDBTAU_SM_ST_ACTPOS = "9idbTAU:SM:ST:ActPos"
+
+
+class LaminoAnglePVStrings(StrEnum):
+    """Possible values of strings used for accessing the rotation angle
+    from the extra PVs dict."""
+
+    XFM_M12_VAL = "2xfm:m12.VAL"

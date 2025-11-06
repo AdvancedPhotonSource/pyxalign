@@ -56,27 +56,21 @@ from pyxalign.interactions.viewers.utils import OptionsDisplayWidget
 import pyxalign.io.loaders.pear.options as pear_options
 import pyxalign.io.loaders.xrf.options as xrf_options
 
-
-advanced_options_list = [
-    "base.only_include_files_with",
-    "base.exclude_files_with",
-    "base.selected_ptycho_strings",
-    "base.ask_for_backup_files",
-    "base.select_all_by_default",
-    "is_tile_scan",
-    "n_tiles",
-    "selected_tile",
-    "selected_sequences",
-    "selected_experiment_name",
-    "_mda_file_pattern",
-    "_lamino_angle_pv_string",
-    "_angle_pv_string",
-    "_channel_names_path",
-    "_channel_data_path",
+basic_options_list = [
+    "base.parent_projections_folder",
+    "base.file_pattern",
+    "base.scan_start",
+    "base.scan_end",
+    "base.scan_list",
+    # "selected_experiment_name",
+    "base.folder",
+    "dat_file_path",
+    "mda_folder",
 ]
 
+
 file_dialog_fields = ["dat_file_path"]
-folder_dialog_fields = ["base.parent_projections_folder", "mda_folder"]
+folder_dialog_fields = ["base.parent_projections_folder", "mda_folder", "base.folder"]
 open_panels_list = ["base"]
 
 T = TypeVar("T", bound=Union[StandardData, dict[str, StandardData]])
@@ -157,12 +151,12 @@ class SelectLoadSettingsWidget(QWidget):
             self.select_options_widget.layout().removeWidget(self.options_editor)
             self.options_editor.deleteLater()
 
-        basic_options_list = list(
-            np.setdiff1d(
-                get_all_attribute_names(options),
-                advanced_options_list,
-            )
-        )
+        # basic_options_list = list(
+        #     np.setdiff1d(
+        #         get_all_attribute_names(options),
+        #         advanced_options_list,
+        #     )
+        # )
 
         # Update the options editor with advanced tab functionality
         self.options_editor = BasicOptionsEditor(

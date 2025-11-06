@@ -5,6 +5,8 @@ import numpy as np
 import dataclasses
 from dataclasses import field
 
+from pyxalign.io.loaders.enums import MDAFilePatterns, RotationAnglePVStrings
+
 
 class LoaderType(StrEnum):
     "Loaders compatible with PEAR style loading"
@@ -152,10 +154,10 @@ class MDAPEARLoadOptions(PEARLoadOptions):
     """Folder containing MDA files, which in turn contain information about the
     measurement, including the measurment angle."""
 
-    _mda_file_pattern: str = ""
+    _mda_file_pattern: MDAFilePatterns = ""
     "Filestring pattern of the mda files"
 
-    _angle_pv_string: str = ""
+    _angle_pv_string: RotationAnglePVStrings = ""
     "String corresponding to the PV that stores the rotation measurement angle"
 
 
@@ -168,9 +170,9 @@ class Microprobe2IDELoadOptions(MDAPEARLoadOptions):
     * processed using the **PEAR wrapper** for **Pty-Chi**
     """
 
-    _mda_file_pattern: str = r"2xfm_(\d+)\.mda"
+    _mda_file_pattern: MDAFilePatterns = MDAFilePatterns.XFM_MDA_H5
 
-    _angle_pv_string: str = "2xfm:m60.VAL"
+    _angle_pv_string: RotationAnglePVStrings = RotationAnglePVStrings.XFM_M60_VAL
 
 
 @dataclasses.dataclass
@@ -181,6 +183,6 @@ class BNP2IDDLoadOptions(MDAPEARLoadOptions):
     * processed using the **PEAR wrapper** for **Pty-Chi**
     """
 
-    _mda_file_pattern: str = r"bnp_fly(\d+)\.mda"
+    _mda_file_pattern: MDAFilePatterns = MDAFilePatterns.BNP_FLY_MDA
 
-    _angle_pv_string: str = "9idbTAU:SM:ST:ActPos"
+    _angle_pv_string: RotationAnglePVStrings = RotationAnglePVStrings.IDBTAU_SM_ST_ACTPOS
