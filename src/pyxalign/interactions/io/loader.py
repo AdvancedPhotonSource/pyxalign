@@ -272,7 +272,8 @@ def launch_data_loader(load_options: Optional[OptionsClass] = None) -> tuple[T, 
         Launch the data loader
         GUI::
 
-            loaded_data = pyxalign.gui.launch_data_loader()
+            import pyxalign
+            loaded_data, load_options = pyxalign.gui.launch_data_loader()
     """
     app = QApplication.instance() or QApplication([])
     gui = SelectLoadSettingsWidget(load_options)

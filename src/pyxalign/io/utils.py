@@ -129,8 +129,12 @@ def dict_to_dataclass(
 
     return options_class(**field_values)
 
+def load_options_from_h5_file(file_path: str, options_class: Type[OptionsClass]) -> OptionsClass:
+    with h5py.File(file_path, "r") as F:
+        options = load_options_from_h5_group(F, options_class)
+    return options
 
-def load_options(h5_obj: h5py.Group, options_class: Type[OptionsClass]) -> OptionsClass:
+def load_options_from_h5_group(h5_obj: h5py.Group, options_class: Type[OptionsClass]) -> OptionsClass:
     return dict_to_dataclass(options_class=options_class, data=h5_to_dict(h5_obj))
 
 
@@ -157,7 +161,13 @@ def safe_enum_access(value: str, expected_type: type[enum.StrEnum]) -> enum.StrE
     Raises:
         ValueError: If no suitable match found
     """
-    # Try direct access first (case-insensitive)
+    # Try direct access first
+    try:
+        return expected_type(value)
+    except KeyError:
+        pass
+    # StrEnums made with 'auto' won't be recognized
+    # if for some reason they weren't capitalized
     try:
         return expected_type[value.upper()]
     except KeyError:
@@ -196,7 +206,10 @@ def safe_enum_access(value: str, expected_type: type[enum.StrEnum]) -> enum.StrE
         codebase have changed at some point after this file was created. 
         """)
         return best_member_match
+    else:
+        print(f"""No matching enum member found for '{value}' in {expected_type.__name__}
+            Returning {value} as string instead of expected_type""")
 
-    raise ValueError(
-        f"No matching enum member found for '{value}' in {expected_type.__name__}"
-    )
+    # raise ValueError(
+    #     f"No matching enum member found for '{value}' in {expected_type.__name__}"
+    # )

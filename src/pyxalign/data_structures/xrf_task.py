@@ -14,7 +14,7 @@ from pyxalign.data_structures.task import run_projection_matching
 from pyxalign.data_structures.xrf_projections import XRFProjections
 from pyxalign.io.load import load_xrf_projections
 from pyxalign.io.save import save_generic_data_structure_to_h5
-from pyxalign.io.utils import load_options
+from pyxalign.io.utils import load_options_from_h5_group
 from pyxalign.timing.timer_utils import clear_timer_globals
 from pyxalign.api.types import r_type
 
@@ -263,8 +263,8 @@ def load_xrf_task(file_path: str, exclude_channels: Optional[list[str]] = None) 
             task_h5_obj=h5_obj, exclude_channels=exclude_channels
         )
         primary_channel = h5_obj["primary_channel"][()].decode()
-        alignment_options = load_options(h5_obj["alignment_options"], AlignmentTaskOptions)
-        projection_options = load_options(h5_obj["projection_options"], ProjectionOptions)
+        alignment_options = load_options_from_h5_group(h5_obj["alignment_options"], AlignmentTaskOptions)
+        projection_options = load_options_from_h5_group(h5_obj["projection_options"], ProjectionOptions)
     angles = xrf_projections_dict[primary_channel].angles
     scan_numbers = xrf_projections_dict[primary_channel].scan_numbers
     # masks = xrf_projections_dict[primary_channel].masks
