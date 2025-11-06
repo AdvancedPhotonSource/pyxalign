@@ -701,6 +701,8 @@ class Projections:
         staged_function_type: enums.ShiftType = enums.ShiftType.FFT,
         update_center_of_rotation: bool = True,
         drop_unshared_scans: bool = False,
+        reference_tile_num: Optional[int] = None,
+        current_tile_num: Optional[int] = None,
     ):
         # Load data
         with h5py.File(task_file_path, "r") as F:
@@ -721,6 +723,8 @@ class Projections:
             reference_pixel_size,
             self.scan_numbers,
             self.pixel_size,
+            reference_tile_num,
+            current_tile_num,
         )
         remove_scans = [scan for scan in self.scan_numbers if scan not in shared_scan_numbers]
         if drop_unshared_scans:

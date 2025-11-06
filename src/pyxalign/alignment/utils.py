@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from pyxalign.api.types import r_type
 
@@ -8,15 +9,33 @@ def get_shift_from_different_resolution_alignment(
     reference_pixel_size: float,
     current_scan_numbers: np.ndarray,
     current_pixel_size: float,
+    reference_tile_num: Optional[int] = None,
+    current_tile_num: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    shared_scan_numbers = [scan for scan in current_scan_numbers if scan in reference_scan_numbers]
+    
+    # ref = 1
+    # current = 2
+    if reference_tile_num is not None and current_tile_num is not None:
+        offs = current_tile_num - reference_tile_num # =1
+    elif reference_tile_num is not None or current_tile_num is not None:
+        raise Exception
+    else:
+        offs = 0
+    shared_scan_numbers = [
+        scan for scan in current_scan_numbers if scan - offs in reference_scan_numbers
+    ]
     # current_scan_numbers[idx_1] returns all scan numbers that are also in reference_scan_numbers
-    idx_1 = [i for i, scan in enumerate(current_scan_numbers) if scan in reference_scan_numbers]
+    idx_1 = [
+        i for i, scan in enumerate(current_scan_numbers) if scan - offs in reference_scan_numbers
+    ]
     # reference_scan_numbers[idx_2] returns all scan numbers that are also in current_scan_numbers
-    idx_2 = [np.where(reference_scan_numbers == scan)[0][0]
-             for i, scan in enumerate(current_scan_numbers) if scan in reference_scan_numbers]
+    idx_2 = [
+        np.where(reference_scan_numbers == scan - offs)[0][0]
+        for i, scan in enumerate(current_scan_numbers)
+        if scan - offs in reference_scan_numbers
+    ]
 
-    assert np.all(current_scan_numbers[idx_1] == reference_scan_numbers[idx_2])
+    assert np.all(current_scan_numbers[idx_1] - 1 == reference_scan_numbers[idx_2])
 
     new_shift = np.zeros((len(current_scan_numbers), 2), dtype=r_type)
     new_shift[idx_1] = reference_shift[idx_2]
