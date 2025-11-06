@@ -258,7 +258,7 @@ class MainLoadingWidget(QWidget):
 
 
 @switch_to_matplotlib_qt_backend
-def launch_data_loader(load_options: Optional[OptionsClass] = None) -> T:
+def launch_data_loader(load_options: Optional[OptionsClass] = None) -> tuple[T, OptionsClass]:
     """Launch a GUI for filling out load options and loading data.
 
     Args:
@@ -292,7 +292,11 @@ def launch_data_loader(load_options: Optional[OptionsClass] = None) -> T:
     gui.close()
     if result != {}:
         # Return the result after the app closes
-        return result["data"]
+        loaded_data = result["data"]
+    else:
+        loaded_data = None
+
+    return loaded_data, gui.options
 
 
 if __name__ == "__main__":
