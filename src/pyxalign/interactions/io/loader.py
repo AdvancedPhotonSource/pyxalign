@@ -40,7 +40,7 @@ from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 from pyxalign.io.loaders.load_any import load_dataset_from_arbitrary_options
 from pyxalign.io.loaders.xrf.api import load_data_from_xrf_format
 import sip
-from pyxalign.api.options_utils import get_all_attribute_names
+from pyxalign.api.options_utils import get_all_attribute_names, print_options
 from pyxalign.interactions.io.input_data_viewer import StandardDataViewer
 from pyxalign.io.loaders.base import StandardData
 from pyxalign.io.loaders.enums import ExperimentType
@@ -50,7 +50,7 @@ from pyxalign.io.loaders.maps import (
     get_loader_options_by_enum,
 )
 from pyxalign.interactions.options.options_editor import BasicOptionsEditor
-from pyxalign.io.utils import OptionsClass
+from pyxalign.api.types import OptionsClass
 from pyxalign.interactions.viewers.utils import OptionsDisplayWidget
 
 import pyxalign.io.loaders.pear.options as pear_options
@@ -296,6 +296,10 @@ def launch_data_loader(load_options: Optional[OptionsClass] = None) -> tuple[T, 
         loaded_data = result["data"]
     else:
         loaded_data = None
+
+    print(f"Selected options type: {gui.options.__class__.__qualname__}")
+    print("Selected options:")
+    print_options(gui.options)
 
     return loaded_data, gui.options
 

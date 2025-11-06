@@ -5,7 +5,7 @@ import pyxalign.io.loaders.xrf.options as xrf_options
 from pyxalign.io.loaders.base import StandardData
 from pyxalign.io.loaders.pear.api import load_data_from_pear_format
 from pyxalign.io.loaders.xrf.api import load_data_from_xrf_format
-from pyxalign.io.utils import OptionsClass
+from pyxalign.api.types import OptionsClass
 
 
 def load_dataset_from_arbitrary_options(

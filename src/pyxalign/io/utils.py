@@ -1,14 +1,13 @@
 from dataclasses import fields, is_dataclass
 import enum
-from typing import Type, Union, TypeVar
+from typing import Optional, Type, Union
 import h5py
 from difflib import get_close_matches
 
-
 from pyxalign.api.enums import SpecialValuePlaceholder
-
-OptionsClass = TypeVar("OptionsClass")
-
+from pyxalign.api.types import OptionsClass
+from pyxalign.io.loaders.enums import ExperimentType
+from pyxalign.io.loaders.maps import get_loader_options_by_enum
 
 def handle_null_type(value):
     value = value.decode()
@@ -129,12 +128,34 @@ def dict_to_dataclass(
 
     return options_class(**field_values)
 
-def load_options_from_h5_file(file_path: str, options_class: Type[OptionsClass]) -> OptionsClass:
+
+def load_options_from_h5_file(
+    file_path: str, options_class: Optional[Type[OptionsClass]] = None
+) -> OptionsClass:
+    """Load file loading options from an hdf5 file. To save file loading
+    options to an hdf5 file, see
+    `pyxalign.io.save_loading_options_to_h5_file`.
+
+    Args:
+        file_path (str): the path to the hdf5 file.
+    """
+    # options_class is an zoptional input of the class type being loaded.
+    # This is usually found by accessing the "experiment_type"
+    # field in the hdf5 file, but it will have to be passed
+    # manually if naming conventions in `get_loader_options_by_enum`
+    # ever change.
     with h5py.File(file_path, "r") as F:
+        if options_class is None:
+            options_class = get_loader_options_by_enum(
+                ExperimentType(F["experiment_type"][()].decode())
+            ).__class__
         options = load_options_from_h5_group(F, options_class)
     return options
 
-def load_options_from_h5_group(h5_obj: h5py.Group, options_class: Type[OptionsClass]) -> OptionsClass:
+
+def load_options_from_h5_group(
+    h5_obj: h5py.Group, options_class: Type[OptionsClass]
+) -> OptionsClass:
     return dict_to_dataclass(options_class=options_class, data=h5_to_dict(h5_obj))
 
 
@@ -195,7 +216,6 @@ def safe_enum_access(value: str, expected_type: type[enum.StrEnum]) -> enum.StrE
             match_found = True
             best_match_index = normalized_names.index(matches[0])
             best_member_match = expected_type[enum_names[best_match_index]]
-        
 
     if match_found:
         print(f"""

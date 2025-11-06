@@ -7,7 +7,7 @@ import pyxalign.io.loaders.xrf.options as xrf_options
 
 from pyxalign.io.loaders.pear.pear_loader_1 import PearLoaderVersion1
 from pyxalign.io.loaders.enums import ExperimentType
-from pyxalign.io.utils import OptionsClass
+from pyxalign.api.types import OptionsClass
 
 LoaderClassType = Union[
     type[FoldSliceLoaderVersion1], type[FoldSliceLoaderVersion2], type[PearLoaderVersion1]
@@ -25,15 +25,15 @@ def get_loader_options_by_enum(key: ExperimentType) -> OptionsClass:
     return {
         ExperimentType.LYNX: pear_options.LYNXLoadOptions(
             dat_file_path=None,
-            base=pear_options.BaseLoadOptions(parent_projections_folder=None),
+            base=pear_options.BaseLoadOptions(parent_projections_folder=""),
         ),
         ExperimentType.BEAMLINE_2IDE_PTYCHO: pear_options.Microprobe2IDELoadOptions(
             mda_folder=None,
-            base=pear_options.BaseLoadOptions(parent_projections_folder=None),
+            base=pear_options.BaseLoadOptions(parent_projections_folder=""),
         ),
         ExperimentType.BEAMLINE_2IDD_PTYCHO: pear_options.BNP2IDDLoadOptions(
             mda_folder=None,
-            base=pear_options.BaseLoadOptions(parent_projections_folder=None),
+            base=pear_options.BaseLoadOptions(parent_projections_folder=""),
         ),
         ExperimentType.BEAMLINE_2IDE_XRF: xrf_options.XRF2IDELoadOptions(),
     }[key]
@@ -49,4 +49,16 @@ def get_experiment_type_enum_from_options(options: OptionsClass) -> ExperimentTy
     elif isinstance(options, xrf_options.XRF2IDELoadOptions):
         return ExperimentType.BEAMLINE_2IDE_XRF
 
-
+    # above part doesn't run right when using reloading features during development
+    # other users pls ignore
+    if options.__class__.__qualname__ == pear_options.LYNXLoadOptions.__qualname__:
+        return ExperimentType.LYNX
+    elif (
+        options.__class__.__qualname__
+        == pear_options.Microprobe2IDELoadOptions.__qualname__
+    ):
+        return ExperimentType.BEAMLINE_2IDE_PTYCHO
+    elif options.__class__.__qualname__ == pear_options.BNP2IDDLoadOptions.__qualname__:
+        return ExperimentType.BEAMLINE_2IDD_PTYCHO
+    elif options.__class__.__qualname__ == pear_options.XRF2IDELoadOptions.__qualname__:
+        return ExperimentType.BEAMLINE_2IDE_XRF
