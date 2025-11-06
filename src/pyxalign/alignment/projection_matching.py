@@ -70,7 +70,7 @@ class ProjectionMatchingAligner(Aligner):
             center_of_rotation=self.projections.center_of_rotation,
         )
         if self.options.downsample.enabled:
-            self.scale = (self.options.downsample.scale).astype(int)
+            self.scale = int(self.options.downsample.scale)
         else:
             self.scale = 1
 
