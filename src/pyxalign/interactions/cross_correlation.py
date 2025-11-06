@@ -253,23 +253,6 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.plot_item.addLegend()
 
     def show_cropped_projections_viewer(self):
-        """Example Google style docstrings.
-
-        This module demonstrates documentation as specified by the `Google Python
-        Style Guide`_. Docstrings may extend over multiple lines. Sections are created
-        with a section header and a colon followed by a block of indented text.
-
-        Example:
-            Examples can be given using either the ``Example`` or ``Examples``
-            sections. Sections support any reStructuredText formatting, including
-            literal blocks::
-
-                gui = pyxalign.gui.launch_cross_correlation_gui(task)
-
-            After you are happy with the alignment, shift the projections::
-
-                task.phase_projections.apply_staged_shift()
-        """
         self.crop_viewer = ArrayViewer(
             array3d=Cropper(self.options_editor._data.crop).run(self.projections.data),
             sort_idx=np.argsort(self.projections.angles),

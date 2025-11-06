@@ -235,7 +235,11 @@ class ProjectionViewer(MultiThreadedWidget):
 
     def open_scan_removal_window(self):
         if self.projection_dropping_widget is None:
-            self.projection_dropping_widget = ScanRemovalTool(self.projections, self.array_viewer)
+            self.projection_dropping_widget = ScanRemovalTool(
+                self.projections,
+                self.array_viewer,
+                projection_drop_function=self.projections.drop_projections,
+            )
         self.projection_dropping_widget.show()
 
     def open_mask_creation_window(self):

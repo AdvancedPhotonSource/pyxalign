@@ -83,6 +83,8 @@ def plot_slice_comparison_with_insets(
     """
     if clim_mult_list is None:
         clim_mult_list = [None] * (len(volume_paths))
+    if invert is None:
+        invert = [False] * (len(volume_paths))
 
     n_cols = int(np.ceil(len(volume_paths) / n_rows))
     fig, ax = plt.subplots(n_rows, n_cols, layout="compressed", figsize=figsize)
