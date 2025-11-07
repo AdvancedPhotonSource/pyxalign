@@ -15,7 +15,7 @@ conda install -c conda-forge ipykernel
 ```
 3. Clone the pyxalign git repo
 ```bash
-git clone https://github.com/hruth/pyxalign.git
+git clone https://github.com/AdvancedPhotonSource/pyxalign.git
 ```
 4. Install the package
 ```bash
