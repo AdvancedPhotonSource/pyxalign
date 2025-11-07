@@ -8,3 +8,4 @@ Additional examples will be added periodically.
 
    simulated_shepp_logan_phantom_alignment_converted
    xrf_2ide_example_converted
+   xrf_2ide_tomography_example_converted
