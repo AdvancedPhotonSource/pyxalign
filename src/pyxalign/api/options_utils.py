@@ -1,5 +1,6 @@
 from dataclasses import is_dataclass, fields
 import pyxalign.api.options as opts
+from pyxalign.api.types import OptionsClass
 
 __all__ = ["set_all_device_options", "print_options"]
 
@@ -18,11 +19,17 @@ def set_all_device_options(options, device_options: "opts.DeviceOptions"):
             pass
 
 
-def print_options(options, prepend="- "):
+def print_options(options: OptionsClass, prepend=" * ", include_class_name: bool = True):
+    """Print the values in an instance of one of pyxalign's options dataclasses"""
+    class_name = options.__class__.__qualname__
+    if include_class_name:
+        print(f"{class_name} instance values:")
     for k, v in options.__dict__.items():
         if is_any_dataclass_instance(v):
-            print(f"{prepend}{k} options")
-            print_options(v, "     " + prepend)
+            # print(f"{prepend}{k} options")
+            v_class_name = v.__class__.__qualname__
+            print(f"{prepend}{k} ({v_class_name})")
+            print_options(v, "    " + prepend, include_class_name=False)
         else:
             print(f"{prepend}{k}: {v}")
 

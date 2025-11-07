@@ -139,7 +139,7 @@ def load_options_from_h5_file(
     Args:
         file_path (str): the path to the hdf5 file.
     """
-    # options_class is an zoptional input of the class type being loaded.
+    # options_class is an optional input of the class type being loaded.
     # This is usually found by accessing the "experiment_type"
     # field in the hdf5 file, but it will have to be passed
     # manually if naming conventions in `get_loader_options_by_enum`
@@ -150,6 +150,8 @@ def load_options_from_h5_file(
                 ExperimentType(F["experiment_type"][()].decode())
             ).__class__
         options = load_options_from_h5_group(F, options_class)
+    options_class_name = options_class.__qualname__
+    print(f"Reloaded {options_class_name} from {file_path}")
     return options
 
 

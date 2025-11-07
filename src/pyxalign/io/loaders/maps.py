@@ -60,5 +60,5 @@ def get_experiment_type_enum_from_options(options: OptionsClass) -> ExperimentTy
         return ExperimentType.BEAMLINE_2IDE_PTYCHO
     elif options.__class__.__qualname__ == pear_options.BNP2IDDLoadOptions.__qualname__:
         return ExperimentType.BEAMLINE_2IDD_PTYCHO
-    elif options.__class__.__qualname__ == pear_options.XRF2IDELoadOptions.__qualname__:
+    elif options.__class__.__qualname__ == xrf_options.XRF2IDELoadOptions.__qualname__:
         return ExperimentType.BEAMLINE_2IDE_XRF

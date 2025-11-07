@@ -73,7 +73,7 @@ file_dialog_fields = ["dat_file_path"]
 folder_dialog_fields = ["base.parent_projections_folder", "mda_folder", "base.folder"]
 open_panels_list = ["base"]
 
-T = TypeVar("T", bound=Union[StandardData, dict[str, StandardData]])
+# T = TypeVar("T", bound=Union[StandardData, dict[str, StandardData]])
 
 
 class SelectLoadSettingsWidget(QWidget):
@@ -258,7 +258,9 @@ class MainLoadingWidget(QWidget):
 
 
 @switch_to_matplotlib_qt_backend
-def launch_data_loader(load_options: Optional[OptionsClass] = None) -> tuple[T, OptionsClass]:
+def launch_data_loader(
+    load_options: Optional[OptionsClass] = None,
+) -> tuple[Union[StandardData, dict[str, StandardData]], OptionsClass]:
     """Launch a GUI for filling out load options and loading data.
 
     Args:

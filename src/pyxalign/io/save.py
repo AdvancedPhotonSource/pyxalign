@@ -99,6 +99,8 @@ def save_loading_options_to_h5_file(file_path: str, options: OptionsClass):
         experiment_type = get_experiment_type_enum_from_options(options)
         F.create_dataset(name="experiment_type", data=str(experiment_type))
         save_generic_data_structure_to_h5(options, F)
+    options_class_name = options.__class__.__qualname__
+    print(f"Saved {options_class_name} options at path {file_path}")
 
 
 def convert_to_uint_16(images: np.ndarray, min: float = None, max: float = None):
