@@ -7,3 +7,4 @@ Additional examples will be added periodically.
    :maxdepth: 1
 
    simulated_shepp_logan_phantom_alignment_converted
+   xrf_2ide_example_converted
