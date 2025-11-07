@@ -23,7 +23,7 @@ from pyxalign.io.utils import (
     is_null_type,
     load_array,
     load_list_of_arrays,
-    load_options,
+    load_options_from_h5_group,
 )
 
 
@@ -107,7 +107,7 @@ def load_projections_object(
         projections=proj_h5_obj["data"][()],
         angles=proj_h5_obj["angles"][()],
         scan_numbers=proj_h5_obj["scan_numbers"][()],
-        options=load_options(proj_h5_obj["options"], ProjectionOptions),
+        options=load_options_from_h5_group(proj_h5_obj["options"], ProjectionOptions),
         center_of_rotation=proj_h5_obj["center_of_rotation"][()],
         masks=load_array(proj_h5_obj, "masks"),
         probe=load_array(proj_h5_obj, "probe"),

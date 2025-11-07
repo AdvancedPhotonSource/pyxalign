@@ -10,3 +10,4 @@ API Reference
    enums
    gui
    image_utils
+   utils

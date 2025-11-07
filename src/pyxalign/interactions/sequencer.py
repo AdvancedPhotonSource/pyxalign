@@ -20,7 +20,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from pyxalign.api.options.alignment import ProjectionMatchingOptions
-from pyxalign.interactions.options.options_editor import OptionsClass, set_option_from_field_path
+from pyxalign.api.types import OptionsClass
+from pyxalign.interactions.options.options_editor import set_option_from_field_path
 
 from pyxalign.interactions.sequencer_item import SequencerItem
 

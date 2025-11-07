@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from pyxalign.io.utils import OptionsClass
+from pyxalign.api.types import OptionsClass
 
 
 def populate_tree_widget(tree_widget: QTreeWidget, data):

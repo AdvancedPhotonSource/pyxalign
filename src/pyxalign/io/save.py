@@ -9,6 +9,9 @@ import tifffile as tiff
 import os
 from PIL import Image, ImageDraw, ImageFont
 
+from pyxalign.io.loaders.maps import get_experiment_type_enum_from_options
+from pyxalign.api.types import OptionsClass
+
 
 def save_generic_data_structure_to_h5(d: dict, h5_obj: Union[h5py.Group, h5py.File]):
     "Create h5 datasets for all items in the passed in dict"
@@ -40,7 +43,7 @@ def save_generic_data_structure_to_h5(d: dict, h5_obj: Union[h5py.Group, h5py.Fi
             # Individual numbers
             h5_obj.create_dataset(value_name, data=value, dtype=type(value))
 
-        elif isinstance(value, Sequence) and isinstance(value[0], Number):
+        elif isinstance(value, Sequence) and len(value) > 0 and isinstance(value[0], Number):
             # Sequence (i.e. list, tuple) of numbers
             h5_obj.create_dataset(value_name, data=value, dtype=type(value[0]))
 
@@ -83,10 +86,21 @@ def save_string_to_h5(h5_obj: Union[h5py.Group, h5py.File], string: str, value_n
         h5_obj.create_dataset(value_name, data=string)
 
 
-def save_options_to_h5_file(file_path: str, options):
-    F = h5py.File(file_path, "w")
-    save_generic_data_structure_to_h5(options, F)
-    F.close()
+def save_loading_options_to_h5_file(file_path: str, options: OptionsClass):
+    """Save file loading options to an hdf5 file. Use 
+    `pyxalign.io.load_options_from_h5_file` to reload the options.
+
+    Args:
+        file_path (str): path to save the options to
+        options: file loading options to save.
+    """
+    with h5py.File(file_path, "w") as F:
+        # record the options type
+        experiment_type = get_experiment_type_enum_from_options(options)
+        F.create_dataset(name="experiment_type", data=str(experiment_type))
+        save_generic_data_structure_to_h5(options, F)
+    options_class_name = options.__class__.__qualname__
+    print(f"Saved {options_class_name} options at path {file_path}")
 
 
 def convert_to_uint_16(images: np.ndarray, min: float = None, max: float = None):

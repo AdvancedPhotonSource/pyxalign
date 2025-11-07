@@ -2,7 +2,7 @@
 name = "pyxalign"
 authors = [{name = "Hanna Ruth", email = "hruth@anl.gov"}]
 version = "1.0.0"
-description = "Package for alignment and reconstruction of laminography data."
+description = "Package for alignment and reconstruction of laminography and tomography datasets."
 dependencies = [
     "h5py",
     "matplotlib",

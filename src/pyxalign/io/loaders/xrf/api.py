@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Union
 import numpy as np
 import tqdm
 from pyxalign.io.loaders.base import StandardData
@@ -10,18 +10,22 @@ from pyxalign.io.loaders.utils import convert_projection_dict_to_array
 
 def load_data_from_xrf_format(
     options: xrf_options.XRFLoadOptions,
-) -> tuple[dict[str, StandardData], dict]:
-    """Function for loading XRF data and returning it in the standardized
-    format.
+    return_extra_pvs: bool = False,
+) -> Union[dict[str, StandardData], tuple[dict[str, StandardData], dict]]:
+    """Function for loading XRF data and returning it in the
+    standardized format.
 
     Args:
         options (xrf.options.XRFLoadOptions): Configuration options
             for loading data.
+        return_extra_pvs (bool): determines if the extra PVs will be
+            returned or not. Defaults to False.
 
     Returns:
-        A tuple containing: 1) a dict of `StandardData` objects, where
-        each key is a string specifying the channel and 2) a dict
-        containg a dict of the extra PVs from the MDA file.
+        A dict of `StandardData` objects, where each key is a string
+        specifying the channel. If the input argument return_extra_pvs
+        is `True`, then a dict containg a dict of the extra PVs from
+        the .mda file is also returned.
 
     Example:
         Load XRF data taken at beamline 2-ID-E from the folder
@@ -31,9 +35,7 @@ def load_data_from_xrf_format(
                 "my/mda/data/folder/"
             )
             load_options = xrf_options.XRF2IDELoadOptions(base=base_load_options)
-            xrf_standard_data_dict, extra_PVs = load_data_from_xrf_format(
-                load_options
-            )
+            xrf_standard_data_dict = load_data_from_xrf_format(load_options)
 
         Once the data is loaded, you can create an XRFTask::
 
@@ -60,10 +62,14 @@ def load_data_from_xrf_format(
                 primary_channel=primary_channel,
                 projection_options=projection_options,
             )
+
     """
     file_names = os.listdir(options.base.folder)  # Temporary?
     xrf_standard_data_dict, extra_PVs = load_xrf_experiment(file_names, options)
-    return xrf_standard_data_dict, extra_PVs
+    if return_extra_pvs:
+        return xrf_standard_data_dict, extra_PVs
+    else:
+        return xrf_standard_data_dict
 
 
 def convert_xrf_projection_dicts_to_arrays(
@@ -88,6 +94,7 @@ def convert_xrf_projection_dicts_to_arrays(
 
     Returns:
         A dictionary containg the 3D projection array for each channel.
+
     """
 
     xrf_array_dict = {}

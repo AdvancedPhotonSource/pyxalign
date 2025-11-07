@@ -22,7 +22,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from pyxalign.interactions.options.options_editor import OptionsClass, SingleOptionEditor
+from pyxalign.api.types import OptionsClass
+from pyxalign.interactions.options.options_editor import SingleOptionEditor
 
 T = TypeVar("T")
 

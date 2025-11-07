@@ -24,7 +24,7 @@ from pyxalign.interactions.pma_runner import PMAMasterWidget
 from pyxalign.interactions.sidebar_navigator import SidebarNavigator
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 import pyxalign.io.loaders.pear.options as pear_options
-from pyxalign.io.utils import OptionsClass
+from pyxalign.api.types import OptionsClass
 
 
 class MasterWidget(QWidget):
