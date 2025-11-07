@@ -186,8 +186,13 @@ def run_projection_matching(
         return pma_object, shift
 
 
-def load_task(file_path: str, exclude: list[str] = []) -> LaminographyAlignmentTask:
+def load_task(file_path: str, exclude: Optional[str] = None) -> LaminographyAlignmentTask:
     print("Loading task from", file_path, "...")
+
+    if exclude is None:
+        exclude = []
+    elif isinstance(exclude, str):
+        exclude = [exclude]
 
     with h5py.File(file_path, "r") as h5_obj:
         # Load projections
