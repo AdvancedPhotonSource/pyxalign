@@ -12,11 +12,8 @@ def get_shift_from_different_resolution_alignment(
     reference_tile_num: Optional[int] = None,
     current_tile_num: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    
-    # ref = 1
-    # current = 2
     if reference_tile_num is not None and current_tile_num is not None:
-        offs = current_tile_num - reference_tile_num # =1
+        offs = current_tile_num - reference_tile_num
     elif reference_tile_num is not None or current_tile_num is not None:
         raise Exception
     else:
@@ -35,7 +32,7 @@ def get_shift_from_different_resolution_alignment(
         if scan - offs in reference_scan_numbers
     ]
 
-    assert np.all(current_scan_numbers[idx_1] - 1 == reference_scan_numbers[idx_2])
+    assert np.all(current_scan_numbers[idx_1] - offs == reference_scan_numbers[idx_2])
 
     new_shift = np.zeros((len(current_scan_numbers), 2), dtype=r_type)
     new_shift[idx_1] = reference_shift[idx_2]

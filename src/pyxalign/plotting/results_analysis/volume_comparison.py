@@ -158,7 +158,7 @@ def plot_tiff_layer(
         layer = -layer
     im = ax.imshow(layer, cmap="bone")
     if colorbar:
-        plt.colorbar(im)# orientation='vertical')
+        plt.colorbar(im)  # orientation='vertical')
     if clim is not None:
         im.set_clim(clim)
     if clim_mult is not None:
@@ -212,7 +212,15 @@ def plot_tiff_layer(
     plt.sca(axins)
     add_scalebar(pixel_size, plot_crop_width, scalebar_fractional_width=scalebar_fractional_width)
     # Connect and outline the marked region on the parent
-    mark_inset(ax, axins, loc1=3, loc2=4, fc="none", ec=inset_color, lw=inset_linewidth, ls=ls)
+    if inset_loc == "upper right" or inset_loc == "upper left":
+        loc1, loc2 = 3, 4
+    elif inset_loc == "lower right" or inset_loc == "lower left":
+        loc1, loc2 = 1, 2
+    else:
+        loc1, loc2 = None, None
+    mark_inset(
+        ax, axins, loc1=loc1, loc2=loc2, fc="none", ec=inset_color, lw=inset_linewidth, ls=ls
+    )
     if not return_layer:
         return im, axins
     else:
