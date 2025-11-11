@@ -9,17 +9,18 @@ from PyQt5.QtWidgets import QApplication
 from pyxalign.alignment.base import Aligner
 from pyxalign.api.options.projections import ProjectionTransformOptions
 from pyxalign.api.options.transform import ShiftOptions
-from pyxalign.api.options_utils import set_all_device_options
+from pyxalign.api.options_utils import print_options, set_all_device_options
 import pyxalign.data_structures.projections as projections
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 from pyxalign.interactions.viewers.projection_matching import ProjectionMatchingViewer
+from pyxalign.mask import force_crop_options_in_bounds
 from pyxalign.regularization import chambolleLocalTV3D
 from pyxalign.style.text import text_colors
 from pyxalign.timing.timer_utils import InlineTimer, timer
 from pyxalign.transformations.classes import Shifter
 import pyxalign.image_processing as ip
 import pyxalign.api.maps as maps
-from pyxalign.api.enums import DeviceType, MemoryConfig
+from pyxalign.api.enums import DeviceType, MemoryConfig, RoundType
 from pyxalign.api.options.alignment import ProjectionMatchingOptions
 import pyxalign.gpu_utils as gutils
 from pyxalign.api.types import ArrayType, r_type
@@ -28,6 +29,8 @@ from IPython.display import clear_output
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import astra
+
+from pyxalign.transformations.helpers import round_to_divisor
 
 
 class ProjectionMatchingAligner(Aligner):
@@ -46,6 +49,9 @@ class ProjectionMatchingAligner(Aligner):
     @gutils.memory_releasing_error_handler
     @timer()
     def run(self, initial_shift: Optional[np.ndarray] = None) -> np.ndarray:
+        # check options validity
+        self.check_if_valid_options()
+
         if self.options.keep_on_gpu:
             cp.cuda.Device(self.options.device.gpu.gpu_indices[0]).use()
         # Create the projections object
@@ -53,6 +59,7 @@ class ProjectionMatchingAligner(Aligner):
         if self.options.keep_on_gpu:
             set_all_device_options(projection_options, copy.deepcopy(self.options.device))
         projection_options.experiment.pixel_size = self.projections.pixel_size
+
         projection_options.input_processing = ProjectionTransformOptions(
             downsample=self.options.downsample,
             crop=self.options.crop,
@@ -102,6 +109,49 @@ class ProjectionMatchingAligner(Aligner):
         self.aligned_projections.volume.clear_astra_objects()
 
         return shift
+    
+    def check_if_valid_options(self):
+        if self.options.downsample.enabled and np.log2(self.options.downsample.scale) % 1 != 0:
+            raise ValueError(f"""Values for downsample.scale must be a power of 2.
+                            Input downsampling value: {self.options.downsample.scale}""")
+
+        if self.options.downsample.enabled:
+            scale = self.options.downsample.scale
+        else:
+            scale = 1
+
+        if self.options.crop.enabled:
+            crop_widths = self.options.crop.horizontal_range, self.options.crop.vertical_range
+            new_crop_options, out_of_bounds = force_crop_options_in_bounds(
+                self.options.crop, self.projections.data.shape[1:]
+            )
+            if out_of_bounds:
+                print("WARNING: Specified crop range is outside the bounds of the projections array.")
+                print("Crop options are being updated automatically.")
+                print("Original crop options:")
+                print_options(self.options.crop, include_class_name=False)
+                print("Updated crop options:")
+                self.options.crop = new_crop_options
+                print_options(self.options.crop, include_class_name=False)
+
+            # check if crop range is an even multiple of the downsampling scale
+            if not np.all([(w % (scale * 2)) == 0 for w in crop_widths]):
+                print("WARNING: Specified crop widths are not an even multiple of the downsampling scale")
+                print("Crop range is being updated automatically.")
+                print("Original crop options:")
+                print_options(self.options.crop, include_class_name=False)
+                print("Updated crop options:")
+                self.options.crop.horizontal_range = round_to_divisor(
+                    self.options.crop.horizontal_range,
+                    RoundType.FLOOR,
+                    divisor=int(scale * 2),
+                )
+                self.options.crop.vertical_range = round_to_divisor(
+                    self.options.crop.vertical_range,
+                    RoundType.FLOOR,
+                    divisor=int(scale * 2),
+                )
+                print_options(self.options.crop, include_class_name=False)
 
     @gutils.memory_releasing_error_handler
     @timer()
