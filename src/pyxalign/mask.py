@@ -14,6 +14,7 @@ from pyxalign import gpu_utils
 from pyxalign.api.enums import RoundType
 from pyxalign.api.options.device import DeviceOptions
 from pyxalign.api.options.projections import SimulatedProbeOptions
+from pyxalign.api.options.roi import ROIOptions, ROIType, RectangularROIOptions
 from pyxalign.gpu_wrapper import device_handling_wrapper
 
 # from pyxalign.interactions.mask import ThresholdSelector, illum_map_threshold_plotter
@@ -400,3 +401,69 @@ def get_simulated_probe_for_masks(
     )
     probe = symmetric_gaussian_2d(shape, amplitude=1, sigma=probe_width)
     return probe
+
+
+def get_masks_from_roi(roi_options: ROIOptions, array_3d_size: tuple) -> np.ndarray:
+    if roi_options.shape == ROIType.RECTANGULAR:
+        masks = np.zeros(array_3d_size, dtype=r_type)
+        c_x, c_y, w_x, w_y = (
+            roi_options.rectangle.horizontal_offset + int(np.floor(array_3d_size[2] / 2)),
+            roi_options.rectangle.vertical_offset + int(np.floor(array_3d_size[1] / 2)),
+            roi_options.rectangle.horizontal_range,
+            roi_options.rectangle.vertical_range,
+        )
+        masks[
+            :,
+            c_y - int(np.floor(w_y / 2)) : c_y + int(np.floor(w_y / 2)),
+            c_x - int(np.floor(w_x / 2)) : c_x + int(np.floor(w_x / 2)),
+        ] = 1
+    elif roi_options.shape == ROIType.ELLIPTICAL:
+        raise NotImplementedError("Elliptical ROI not yet supported")
+    return masks
+
+
+def force_rectangular_roi_in_bounds(
+    rect_roi_options: RectangularROIOptions, array_2d_size: tuple
+) -> RectangularROIOptions:
+    x0, y0 = int(np.floor(array_2d_size[1] / 2)), int(np.floor(array_2d_size[0] / 2))
+    c_x, c_y, w_x, w_y = (
+        rect_roi_options.horizontal_offset,
+        rect_roi_options.vertical_offset,
+        rect_roi_options.horizontal_range,
+        rect_roi_options.vertical_range,
+    )
+    x_start, x_end = x0 + c_x - int(np.floor(w_x / 2)), x0 + c_x + int(np.floor(w_x / 2))
+    y_start, y_end = y0 + c_y - int(np.floor(w_y / 2)), y0 + c_y + int(np.floor(w_y / 2))
+
+    out_of_bounds = False
+    if x_start < 0:
+        x_start = 0
+        c_x = -(int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2)))
+        out_of_bounds = True
+    if x_end >= array_2d_size[1]:
+        x_end = array_2d_size[1] - 1
+        c_x = int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2)) - 1
+        out_of_bounds = True
+    if y_start < 0:
+        y_start = 0
+        c_y = -(int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2)))
+        out_of_bounds = True
+    if y_end >= array_2d_size[0]:
+        y_end = array_2d_size[0] - 1
+        c_y = int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2)) - 1
+        out_of_bounds = True
+
+    new_w_x, new_w_y = x_end - x_start, y_end - y_start
+    new_rect_roi_options = RectangularROIOptions(
+        horizontal_range=new_w_x,
+        vertical_range=new_w_y,
+        horizontal_offset=c_x,
+        vertical_offset=c_y,
+    )
+
+    # if out_of_bounds:
+    #     print("Original ROI was out of bounds and will be modified to be in bounds")
+    #     print_options(rect_roi_options)
+    #     print_options(new_rect_roi_options)
+
+    return new_rect_roi_options

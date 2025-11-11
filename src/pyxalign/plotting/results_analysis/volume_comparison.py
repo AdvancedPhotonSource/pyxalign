@@ -25,6 +25,7 @@ def plot_slice_comparison_with_insets(
     figsize: Optional[tuple[int]] = None,
     show_plot: bool = True,
     invert: Optional[list[bool]] = None,
+    include_inset: bool = True,
 ):
     """
     Plot a comparison of image slices from multiple TIFF volumes with
@@ -113,6 +114,7 @@ def plot_slice_comparison_with_insets(
             colorbar=colorbar,
             plot_center_frac=plot_center_frac,
             invert=invert[i],
+            include_inset=include_inset,
         )
     if show_plot:
         plt.show()
@@ -133,8 +135,8 @@ def plot_tiff_layer(
     clim_mult=None,
     clim: Optional[list[float]] = None,
     colorbar: bool = False,
-    return_layer=False,
     invert: bool = False,
+    include_inset: bool = True,
     *,
     plot_center=None,  # (y, x) in pixels on the (possibly) cropped image
     plot_center_frac=None,  # (fy, fx) in [0,1]; ignored if plot_center is provided
@@ -175,56 +177,57 @@ def plot_tiff_layer(
 
     h, w = layer.shape[:2]
 
-    # Determine inset center
-    if plot_center is not None:
-        cy, cx = plot_center
-    elif plot_center_frac is not None:
-        fy, fx = plot_center_frac
-        # clamp fractions just in case
-        fy = float(np.clip(fy, 0.0, 1.0))
-        fx = float(np.clip(fx, 0.0, 1.0))
-        cy = int(round(fy * (h - 1)))
-        cx = int(round(fx * (w - 1)))
-    else:
-        cy, cx = h // 2, w // 2
+    if include_inset:
+        # Determine inset center
+        if plot_center is not None:
+            cy, cx = plot_center
+        elif plot_center_frac is not None:
+            fy, fx = plot_center_frac
+            # clamp fractions just in case
+            fy = float(np.clip(fy, 0.0, 1.0))
+            fx = float(np.clip(fx, 0.0, 1.0))
+            cy = int(round(fy * (h - 1)))
+            cx = int(round(fx * (w - 1)))
+        else:
+            cy, cx = h // 2, w // 2
 
-    # Inset crop bounds
-    x1, x2, y1, y2 = _clamped_crop_bounds(h, w, plot_crop_width, cy, cx)
+        # Inset crop bounds
+        x1, x2, y1, y2 = _clamped_crop_bounds(h, w, plot_crop_width, cy, cx)
 
-    # Inset axes & view
-    inset_color = "sandybrown"
-    ls = "-"
-    inset_linewidth = 1.1
-    axins = zoomed_inset_axes(ax, zoom=inset_zoom, loc=inset_loc, borderpad=0.3)
-    im = axins.imshow(layer, cmap="bone")
-    if clim_mult is not None:
-        im.set_clim(new_clim)
-    elif clim is not None:
-        im.set_clim(clim)
-    axins.set_xlim(x1, x2)
-    axins.set_ylim(y2, y1)  # origin='upper' default -> invert y to show correctly
-    axins.set_xticks([])
-    axins.set_yticks([])
-    for spine in axins.spines.values():
-        spine.set_edgecolor(inset_color)
-        spine.set_linewidth(inset_linewidth)  # optional, to match thickness
-        spine.set_linestyle(ls)
-    plt.sca(axins)
-    add_scalebar(pixel_size, plot_crop_width, scalebar_fractional_width=scalebar_fractional_width)
-    # Connect and outline the marked region on the parent
-    if inset_loc == "upper right" or inset_loc == "upper left":
-        loc1, loc2 = 3, 4
-    elif inset_loc == "lower right" or inset_loc == "lower left":
-        loc1, loc2 = 1, 2
-    else:
-        loc1, loc2 = None, None
-    mark_inset(
-        ax, axins, loc1=loc1, loc2=loc2, fc="none", ec=inset_color, lw=inset_linewidth, ls=ls
-    )
-    if not return_layer:
+        # Inset axes & view
+        inset_color = "sandybrown"
+        ls = "-"
+        inset_linewidth = 1.1
+        axins = zoomed_inset_axes(ax, zoom=inset_zoom, loc=inset_loc, borderpad=0.3)
+        im = axins.imshow(layer, cmap="bone")
+        if clim_mult is not None:
+            im.set_clim(new_clim)
+        elif clim is not None:
+            im.set_clim(clim)
+        axins.set_xlim(x1, x2)
+        axins.set_ylim(y2, y1)  # origin='upper' default -> invert y to show correctly
+        axins.set_xticks([])
+        axins.set_yticks([])
+        for spine in axins.spines.values():
+            spine.set_edgecolor(inset_color)
+            spine.set_linewidth(inset_linewidth)  # optional, to match thickness
+            spine.set_linestyle(ls)
+        plt.sca(axins)
+        add_scalebar(pixel_size, plot_crop_width, scalebar_fractional_width=scalebar_fractional_width)
+        # Connect and outline the marked region on the parent
+        if inset_loc == "upper right" or inset_loc == "upper left":
+            loc1, loc2 = 3, 4
+        elif inset_loc == "lower right" or inset_loc == "lower left":
+            loc1, loc2 = 1, 2
+        else:
+            loc1, loc2 = None, None
+        mark_inset(
+            ax, axins, loc1=loc1, loc2=loc2, fc="none", ec=inset_color, lw=inset_linewidth, ls=ls
+        )
+    if include_inset:
         return im, axins
     else:
-        return im, axins, layer
+        return im
 
 
 def _clamped_crop_bounds(h: int, w: int, crop: int, cy: int, cx: int):

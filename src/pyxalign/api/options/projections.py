@@ -10,6 +10,7 @@ from pyxalign.api.options.options import (
 )
 from pyxalign.api.options.plotting import UpdatePlotOptions
 from pyxalign.api.options.reconstruct import ReconstructOptions
+from pyxalign.api.options.roi import ROIOptions
 from pyxalign.api.options.transform import CropOptions, DownsampleOptions, RotationOptions
 from functools import partial
 
@@ -152,6 +153,8 @@ class ProjectionOptions:
 
     volume_width: VolumeWidthOptions = field(default_factory=VolumeWidthOptions)
     "Determines reconstructed volume size"
+
+    masks_from_roi: ROIOptions = field(default_factory=ROIOptions)
 
     masks_from_morphology: MorphologicalMaskOptions = field(
         default_factory=MorphologicalMaskOptions

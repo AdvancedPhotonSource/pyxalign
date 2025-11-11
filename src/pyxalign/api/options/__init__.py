@@ -47,6 +47,7 @@ from .plotting import (
     ArrayViewerOptions,
     ProjectionViewerOptions,
 )
+from .roi import ROIOptions
 from .tests import CITestOptions
 
 __all__ = [
@@ -103,4 +104,5 @@ __all__ = [
     "CITestOptions",
     # utility functions
     "utils",
+    "ROIOptions",
 ]

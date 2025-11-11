@@ -8,6 +8,8 @@ from pyxalign.alignment.utils import (
     get_shift_from_different_resolution_alignment,
 )
 from pyxalign.api.options.plotting import PlotDataOptions
+from pyxalign.api.options.roi import ROIType
+from pyxalign.api.options_utils import print_options
 from pyxalign.estimate_center import (
     estimate_center_of_rotation,
     CenterOfRotationEstimateResults,
@@ -35,7 +37,8 @@ from pyxalign.api.options.transform import (
 import pyxalign.gpu_utils as gpu_utils
 from pyxalign.gpu_wrapper import device_handling_wrapper
 from pyxalign.data_structures.volume import Volume
-from pyxalign.mask import build_masks_from_threshold, get_simulated_probe_for_masks
+from pyxalign.mask import force_rectangular_roi_in_bounds
+from pyxalign.mask import build_masks_from_threshold, get_masks_from_roi, get_simulated_probe_for_masks
 from pyxalign.io.utils import load_list_of_arrays
 from pyxalign.io.save import save_generic_data_structure_to_h5
 
@@ -394,10 +397,26 @@ class Projections:
             self.options.mask_from_positions.threshold,
         )
 
+    def get_masks_from_roi_selection(self):
+        """
+        Create masks using the parameters in `self.options.masks_from_roi`.
+
+        To launch the interactive gui for this function, use:
+            `gui = pyxalign.gui.launch_mask_selection_from_roi()`.
+        """
+        if self.options.masks_from_roi.shape == ROIType.RECTANGULAR:
+            self.options.masks_from_roi.rectangle = force_rectangular_roi_in_bounds(
+                self.options.masks_from_roi.rectangle, self.data.shape[1:]
+            )
+        self.masks = get_masks_from_roi(self.options.masks_from_roi, self.data.shape)
+        print("Updated masks, used mask ROI options:")
+        print_options(self.options.masks_from_roi, include_class_name=False)
+
     def drop_projections(self, remove_scans: list[int], repin_array: bool = False):
         "Permanently remove specific projections from object"
         # keep_idx = [i for i in range(0, self.n_projections) if i not in remove_idx]
         # self.dropped_scan_numbers += self.scan_numbers[remove_idx].tolist()
+        remove_scans = [scan for scan in remove_scans if scan in self.scan_numbers]
         if not hasattr(remove_scans, "__len__"):
             raise TypeError("Input argument `remove_scans` should be a list of integers")
         if isinstance(remove_scans, np.ndarray):
@@ -436,6 +455,8 @@ class Projections:
         self.shift_manager.staged_shift = self.shift_manager.staged_shift[keep_idx]
         for i, shift in enumerate(self.shift_manager.past_shifts):
             self.shift_manager.past_shifts[i] = self.shift_manager.past_shifts[i][keep_idx]
+
+        print(f"Removed scans: {[int(x) for x in remove_scans]}")
 
 
     def _post_init(self):
