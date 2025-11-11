@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import field
 from enum import StrEnum, auto
+from typing import Optional
 
 
 class ROIType(StrEnum):
@@ -10,9 +11,9 @@ class ROIType(StrEnum):
 
 @dataclasses.dataclass
 class RectangularROIOptions:
-    horizontal_range: int = 0
+    horizontal_range: Optional[int] = None
 
-    vertical_range: int = 0
+    vertical_range: Optional[int] = None
 
     horizontal_offset: int = 0
 

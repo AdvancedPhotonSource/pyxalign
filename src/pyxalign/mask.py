@@ -21,6 +21,7 @@ from pyxalign.gpu_wrapper import device_handling_wrapper
 
 # from pyxalign.interactions.mask import ThresholdSelector, illum_map_threshold_plotter
 from pyxalign.model_functions import symmetric_gaussian_2d
+from pyxalign.transformations.classes import Cropper
 from pyxalign.transformations.helpers import is_array_real, round_to_divisor
 from IPython.display import display
 import plotly.graph_objects as go
@@ -446,7 +447,7 @@ def force_bounds(
         x_start = 0
         c_x = -(int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2)))
         out_of_bounds = True
-    if x_end >= array_2d_size[1]:
+    if x_end > array_2d_size[1]:
         x_end = array_2d_size[1]
         c_x = int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2))
         out_of_bounds = True
@@ -454,7 +455,7 @@ def force_bounds(
         y_start = 0
         c_y = -(int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2)))
         out_of_bounds = True
-    if y_end >= array_2d_size[0]:
+    if y_end > array_2d_size[0]:
         y_end = array_2d_size[0]
         c_y = int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2))
         out_of_bounds = True
@@ -464,9 +465,10 @@ def force_bounds(
     return new_w_x, new_w_y, c_x, c_y, out_of_bounds
 
 def force_crop_options_in_bounds(crop_options: CropOptions, array_2d_size: tuple) -> tuple[CropOptions, bool]:
+    horizontal_range, vertical_range = Cropper.get_ranges_from_crop_options(crop_options, array_2d_size)
     new_w_x, new_w_y, c_x, c_y, out_of_bounds = force_bounds(
-        horizontal_range=crop_options.horizontal_range,
-        vertical_range=crop_options.vertical_range,
+        horizontal_range=horizontal_range,
+        vertical_range=vertical_range,
         horizontal_offset=crop_options.horizontal_offset,
         vertical_offset=crop_options.vertical_offset,
         array_2d_size=array_2d_size,

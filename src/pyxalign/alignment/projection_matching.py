@@ -17,7 +17,7 @@ from pyxalign.mask import force_crop_options_in_bounds
 from pyxalign.regularization import chambolleLocalTV3D
 from pyxalign.style.text import text_colors
 from pyxalign.timing.timer_utils import InlineTimer, timer
-from pyxalign.transformations.classes import Shifter
+from pyxalign.transformations.classes import Cropper, Shifter
 import pyxalign.image_processing as ip
 import pyxalign.api.maps as maps
 from pyxalign.api.enums import DeviceType, MemoryConfig, RoundType
@@ -121,7 +121,12 @@ class ProjectionMatchingAligner(Aligner):
             scale = 1
 
         if self.options.crop.enabled:
-            crop_widths = self.options.crop.horizontal_range, self.options.crop.vertical_range
+            self.options.crop.horizontal_range, self.options.crop.vertical_range = (
+                Cropper.get_ranges_from_crop_options(
+                    self.options.crop,
+                    self.projections.data.shape[1:],
+                )
+            )
             new_crop_options, out_of_bounds = force_crop_options_in_bounds(
                 self.options.crop, self.projections.data.shape[1:]
             )
@@ -135,6 +140,7 @@ class ProjectionMatchingAligner(Aligner):
                 print_options(self.options.crop, include_class_name=False)
 
             # check if crop range is an even multiple of the downsampling scale
+            crop_widths = self.options.crop.horizontal_range, self.options.crop.vertical_range 
             if not np.all([(w % (scale * 2)) == 0 for w in crop_widths]):
                 print("WARNING: Specified crop widths are not an even multiple of the downsampling scale")
                 print("Crop range is being updated automatically.")

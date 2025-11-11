@@ -78,6 +78,13 @@ class ROISelector(QWidget):
         else:
             self.roi_options = copy.deepcopy(roi_options)
 
+        # convert defaults to length of array
+        if self.roi_options.rectangle.horizontal_range is None:
+            # update None to array size
+            self.roi_options.rectangle.horizontal_range = array3d.shape[2]
+        if self.roi_options.rectangle.vertical_range is None:
+            self.roi_options.rectangle.vertical_range = array3d.shape[1]
+
         # Initialize ArrayViewer
         self.array_viewer = ArrayViewer(array3d, sort_idx=sort_idx)
 
@@ -125,10 +132,11 @@ class ROISelector(QWidget):
         # Create spinboxes for each ROI parameter
         self.spinboxes = {}
 
+        spinbox_max_val = int(1e7)
         # Horizontal offset (relative to center)
         grid_layout.addWidget(QLabel("Horizontal Offset (from center):"), 0, 0)
         self.spinboxes["horizontal_offset"] = QSpinBox()
-        self.spinboxes["horizontal_offset"].setRange(-center_x, center_x)
+        self.spinboxes["horizontal_offset"].setRange(-spinbox_max_val, spinbox_max_val)
         self.spinboxes["horizontal_offset"].setValue(self.roi_options.rectangle.horizontal_offset)
         self.spinboxes["horizontal_offset"].valueChanged.connect(self.on_spinbox_changed)
         grid_layout.addWidget(self.spinboxes["horizontal_offset"], 0, 1)
@@ -136,7 +144,7 @@ class ROISelector(QWidget):
         # Vertical offset (relative to center)
         grid_layout.addWidget(QLabel("Vertical Offset (from center):"), 1, 0)
         self.spinboxes["vertical_offset"] = QSpinBox()
-        self.spinboxes["vertical_offset"].setRange(-center_y, center_y)
+        self.spinboxes["vertical_offset"].setRange(-spinbox_max_val, spinbox_max_val)
         self.spinboxes["vertical_offset"].setValue(self.roi_options.rectangle.vertical_offset)
         self.spinboxes["vertical_offset"].valueChanged.connect(self.on_spinbox_changed)
         grid_layout.addWidget(self.spinboxes["vertical_offset"], 1, 1)
@@ -144,7 +152,7 @@ class ROISelector(QWidget):
         # Horizontal range (width)
         grid_layout.addWidget(QLabel("Horizontal Range (Width):"), 0, 2)
         self.spinboxes["horizontal_range"] = QSpinBox()
-        self.spinboxes["horizontal_range"].setRange(1, max_x)
+        self.spinboxes["horizontal_range"].setRange(1, spinbox_max_val)
         self.spinboxes["horizontal_range"].setValue(self.roi_options.rectangle.horizontal_range)
         self.spinboxes["horizontal_range"].valueChanged.connect(self.on_spinbox_changed)
         grid_layout.addWidget(self.spinboxes["horizontal_range"], 0, 3)
@@ -152,7 +160,8 @@ class ROISelector(QWidget):
         # Vertical range (height)
         grid_layout.addWidget(QLabel("Vertical Range (Height):"), 1, 2)
         self.spinboxes["vertical_range"] = QSpinBox()
-        self.spinboxes["vertical_range"].setRange(1, max_y)
+        self.spinboxes["vertical_range"].setMinimum(1)
+        self.spinboxes["vertical_range"].setRange(1, spinbox_max_val)
         self.spinboxes["vertical_range"].setValue(self.roi_options.rectangle.vertical_range)
         self.spinboxes["vertical_range"].valueChanged.connect(self.on_spinbox_changed)
         grid_layout.addWidget(self.spinboxes["vertical_range"], 1, 3)
@@ -175,14 +184,24 @@ class ROISelector(QWidget):
         """Initialize the pyqtgraph ROI item with parameters from roi_options."""
         rect_opts = self.roi_options.rectangle
 
-        # Handle default values (0) by setting reasonable defaults based on array size
-        if rect_opts.horizontal_range == 0 or rect_opts.vertical_range == 0:
-            # Set default size to 1/4 of the image dimensions
-            default_width = max(50, self.array3d.shape[2] // 4)
-            default_height = max(50, self.array3d.shape[1] // 4)
+        # # Handle default values (0) by setting reasonable defaults based on array size
+        # if rect_opts.horizontal_range == 0 or rect_opts.vertical_range == 0:
+        #     # Set default size to 1/4 of the image dimensions
+        #     default_width = max(50, self.array3d.shape[2] // 4)
+        #     default_height = max(50, self.array3d.shape[1] // 4)
 
+        #     if rect_opts.horizontal_range == 0:
+        #         rect_opts.horizontal_range = default_width
+        #     if rect_opts.vertical_range == 0:
+        #         rect_opts.vertical_range = default_height
+                # Handle default values (0) by setting reasonable defaults based on array size
+        # Set default size to 1/4 of the image dimensions
+        if rect_opts.horizontal_range is None:
+            default_width = max(50, self.array3d.shape[2] // 4)
             if rect_opts.horizontal_range == 0:
                 rect_opts.horizontal_range = default_width
+        if rect_opts.vertical_range is None:
+            default_height = max(50, self.array3d.shape[1] // 4)
             if rect_opts.vertical_range == 0:
                 rect_opts.vertical_range = default_height
 

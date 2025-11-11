@@ -214,14 +214,9 @@ class Cropper(Transformation):
     def run(self, images: ArrayType) -> ArrayType:
         """Calls the image cropping function"""
         if self.enabled:
-            if self.options.horizontal_range == 0:
-                horizontal_range = images.shape[2]
-            else:
-                horizontal_range = self.options.horizontal_range
-            if self.options.vertical_range == 0:
-                vertical_range = images.shape[1]
-            else:
-                vertical_range = self.options.vertical_range
+            horizontal_range, vertical_range = self.get_ranges_from_crop_options(
+                self.options, images.shape[1:]
+            )
             cropped_images = image_crop(
                 images,
                 horizontal_range,
@@ -235,6 +230,18 @@ class Cropper(Transformation):
                 return cropped_images * 1
         else:
             return images
+        
+    @staticmethod
+    def get_ranges_from_crop_options(crop_options: CropOptions, array_2d_shape: tuple) -> tuple:
+        if crop_options.horizontal_range is None:
+            horizontal_range = array_2d_shape[1]
+        else:
+            horizontal_range = crop_options.horizontal_range
+        if crop_options.vertical_range is None:
+            vertical_range = array_2d_shape[0]
+        else:
+            vertical_range = crop_options.vertical_range
+        return horizontal_range, vertical_range
 
 
 class Padder(Transformation):
