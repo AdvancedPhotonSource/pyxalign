@@ -36,9 +36,11 @@ def full_2ide_xrf_processing(
     checkpoint_list = [enums.TestStartPoints.BEGINNING]
     if test_start_point in checkpoint_list:
         # load input data
-        xrf_standard_data_dict, extra_PVs = data_loaders.load_2ide_xrf_test_data()
-        scan_0 = list(extra_PVs.keys())[0]
-        lamino_angle = float(extra_PVs[scan_0]["2xfm:m12.VAL"])
+        xrf_standard_data_dict = data_loaders.load_2ide_xrf_test_data()
+        # scan_0 = list(extra_PVs.keys())[0]
+        # lamino_angle = float(extra_PVs[scan_0]["2xfm:m12.VAL"])
+        channels = list(xrf_standard_data_dict.keys())
+        lamino_angle = xrf_standard_data_dict[channels[0]].lamino_angle
 
         # create projection arrays
         xrf_array_dict = convert_xrf_projection_dicts_to_arrays(

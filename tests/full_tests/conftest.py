@@ -25,8 +25,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
         for func_name, func in PROCESSING_FUNCTIONS_REGISTRY.items():
             test_results = func()
             for name, value in test_results.items():
-                # prefixed_name = f"{func_name}::{name}"
-                prefixed_name = name
+                prefixed_name = f"{func_name}::{name}"
+                # prefixed_name = name
                 all_test_results.append((prefixed_name, value))
         
         metafunc.parametrize(
