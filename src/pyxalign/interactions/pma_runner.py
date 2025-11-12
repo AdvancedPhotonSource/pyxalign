@@ -131,10 +131,14 @@ class AlignmentResultsCollection(QWidget):
     """
 
     def __init__(
-        self, alignment_results_list: list[AlignmentResults], parent: Optional[QWidget] = None
+        self,
+        alignment_results_list: list[AlignmentResults],
+        display_initial_shift: bool = True,
+        parent: Optional[QWidget] = None,
     ):
         super().__init__(parent=parent)
         self.alignment_results_list = alignment_results_list
+        self.display_initial_shift = display_initial_shift
 
         self.create_shift_plots()
         self.create_options_display()
@@ -230,11 +234,12 @@ class AlignmentResultsCollection(QWidget):
             ax.set_ylabel("shift (px)")
             ax.set_xlabel("angle (deg)")
             ax.plot(sorted_angles, alignment_result.shift[sort_idx, i], label="final")
-            ax.plot(
-                sorted_angles,
-                alignment_result.initial_shift[sort_idx, i],
-                label="initial",
-            )
+            if self.display_initial_shift:
+                ax.plot(
+                    sorted_angles,
+                    alignment_result.initial_shift[sort_idx, i],
+                    label="initial",
+                )
             ax.autoscale(enable=True, axis="x", tight=True)
             ax.legend()
             ax.grid(linestyle=":")

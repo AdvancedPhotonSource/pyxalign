@@ -86,13 +86,12 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.make_options_setup_and_results_tab_layout(tabs)
         # Make display for resulting shift
         self.make_results_tab_layout(tabs)
-        # Make display comparing shifted and unshifted projections
-        # to do
 
     def start_alignment(self):
-        wrapped_func = loading_bar_wrapper("Getting cross-correlation alignment")(
-            self.task.get_cross_correlation_shift, block_all_windows=True
-        )
+        wrapped_func = loading_bar_wrapper(
+            load_message="Getting cross-correlation alignment",
+            block_all_windows=True,
+        )(func=self.task.get_cross_correlation_shift)
         shift = wrapped_func(
             projection_type=self.projection_type,  # should perhaps move the type into "options"
             plot_results=False,
@@ -239,7 +238,9 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         tabs.addTab(alignment_setup_widget, "Configure && Start")
 
     def make_results_tab_layout(self, tabs: QTabWidget):
-        self.results_collection_widget = AlignmentResultsCollection(self.alignment_results_list)
+        self.results_collection_widget = AlignmentResultsCollection(
+            self.alignment_results_list, display_initial_shift=False
+        )
         empty_widget = QWidget()
         self._results_collection_layout = QVBoxLayout()
         empty_widget.setLayout(self._results_collection_layout)
