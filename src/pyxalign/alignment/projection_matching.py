@@ -42,14 +42,21 @@ class ProjectionMatchingAligner(Aligner):
         print_updates: bool = True,
     ):
         super().__init__(projections, options)
-        self.options: ProjectionMatchingOptions = self.options
+        self.options: ProjectionMatchingOptions = copy.deepcopy(self.options)
         self.print_updates = print_updates
         self.gui: ProjectionMatchingViewer = None
 
     @gutils.memory_releasing_error_handler
     @timer()
     def run(self, initial_shift: Optional[np.ndarray] = None) -> np.ndarray:
-        # check options validity
+        # Record the downsampling scale
+        if self.options.downsample.enabled:
+            self.scale = int(self.options.downsample.scale)
+        else:
+            self.scale = 1
+
+        # check options validity for crop and downsampling options and 
+        # fix them if possible.
         self.check_if_valid_options()
 
         if self.options.keep_on_gpu:
@@ -59,7 +66,6 @@ class ProjectionMatchingAligner(Aligner):
         if self.options.keep_on_gpu:
             set_all_device_options(projection_options, copy.deepcopy(self.options.device))
         projection_options.experiment.pixel_size = self.projections.pixel_size
-
         projection_options.input_processing = ProjectionTransformOptions(
             downsample=self.options.downsample,
             crop=self.options.crop,
@@ -76,10 +82,6 @@ class ProjectionMatchingAligner(Aligner):
             masks=self.projections.masks,
             center_of_rotation=self.projections.center_of_rotation,
         )
-        if self.options.downsample.enabled:
-            self.scale = int(self.options.downsample.scale)
-        else:
-            self.scale = 1
 
         # When cropping and not downsampling, you need to make a new copy
         # of the array. I don't fully understand why this is needed, but
@@ -111,53 +113,17 @@ class ProjectionMatchingAligner(Aligner):
         return shift
     
     def check_if_valid_options(self):
-        if self.options.downsample.enabled and np.log2(self.options.downsample.scale) % 1 != 0:
+        # if self.options.downsample.enabled and np.log2(self.options.downsample.scale) % 1 != 0:
+        if np.log2(self.scale) % 1 != 0:
             raise ValueError(f"""Values for downsample.scale must be a power of 2.
-                            Input downsampling value: {self.options.downsample.scale}""")
-
-        if self.options.downsample.enabled:
-            scale = self.options.downsample.scale
-        else:
-            scale = 1
-
+                            Input downsampling value: {self.scale}""")
+        
         if self.options.crop.enabled:
-            self.options.crop.horizontal_range, self.options.crop.vertical_range = (
-                Cropper.get_ranges_from_crop_options(
-                    self.options.crop,
-                    self.projections.data.shape[1:],
-                )
+            self.options.crop = Cropper.fix_crop_range(
+                self.options.crop,
+                multiple_of=2 * self.scale,
+                array_2d_size=self.projections.data.shape[1:],
             )
-            new_crop_options, out_of_bounds = force_crop_options_in_bounds(
-                self.options.crop, self.projections.data.shape[1:]
-            )
-            if out_of_bounds:
-                print("WARNING: Specified crop range is outside the bounds of the projections array.")
-                print("Crop options are being updated automatically.")
-                print("Original crop options:")
-                print_options(self.options.crop, include_class_name=False)
-                print("Updated crop options:")
-                self.options.crop = new_crop_options
-                print_options(self.options.crop, include_class_name=False)
-
-            # check if crop range is an even multiple of the downsampling scale
-            crop_widths = self.options.crop.horizontal_range, self.options.crop.vertical_range 
-            if not np.all([(w % (scale * 2)) == 0 for w in crop_widths]):
-                print("WARNING: Specified crop widths are not an even multiple of the downsampling scale")
-                print("Crop range is being updated automatically.")
-                print("Original crop options:")
-                print_options(self.options.crop, include_class_name=False)
-                print("Updated crop options:")
-                self.options.crop.horizontal_range = round_to_divisor(
-                    self.options.crop.horizontal_range,
-                    RoundType.FLOOR,
-                    divisor=int(scale * 2),
-                )
-                self.options.crop.vertical_range = round_to_divisor(
-                    self.options.crop.vertical_range,
-                    RoundType.FLOOR,
-                    divisor=int(scale * 2),
-                )
-                print_options(self.options.crop, include_class_name=False)
 
     @gutils.memory_releasing_error_handler
     @timer()

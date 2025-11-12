@@ -104,6 +104,7 @@ class ArrayViewer(MultiThreadedWidget):
         options: Optional[ArrayViewerOptions] = None,
         sort_idx: Optional[Sequence] = None,
         hide_index_selector_controls: bool = False,
+        return_index_selector_seperately: bool = False,
         multi_thread_func: Optional[Callable] = None,
         extra_title_strings_list: Optional[list[str]] = None,
         process_func: Optional[Callable] = None,
@@ -184,7 +185,8 @@ class ArrayViewer(MultiThreadedWidget):
         # In the original code, a matplotlib toolbar was added, but we omit it for pyqtgraph usage
         layout.addWidget(self.auto_clim_check_box)
         layout.addWidget(self.graphics_layout)
-        layout.addWidget(self.indexing_widget)
+        if not return_index_selector_seperately:
+            layout.addWidget(self.indexing_widget)
         self.setLayout(layout)
 
         # Font and style adjustments
@@ -500,8 +502,6 @@ class IndexSelectorWidget(QWidget):
         if hide_controls:
             self.slider.hide()
             self.play_button.hide()
-            # self.playback_speed_spin.hide()
-            # self.spinbox.hide()
             main_spinbox_widget.hide()
             playback_speed_widget.hide()
 

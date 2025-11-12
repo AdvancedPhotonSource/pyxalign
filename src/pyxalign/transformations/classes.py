@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from scipy import stats
 from tqdm import tqdm
-from pyxalign.api.enums import DownsampleType, DeviceType, ShiftType
+from pyxalign.api.enums import DownsampleType, DeviceType, RoundType, ShiftType
 
 import pyxalign.api.maps as maps
 from pyxalign.api.options.device import DeviceOptions
@@ -18,10 +18,13 @@ from pyxalign.api.options.transform import (
     RotationOptions,
 )
 
+from pyxalign.api.options_utils import print_options
 from pyxalign.api.types import ArrayType
 from pyxalign.gpu_wrapper import device_handling_wrapper
+from pyxalign.mask import force_crop_options_in_bounds
 from pyxalign.transformations.functions import eliminate_wrapping_from_shift, image_crop, image_crop_pad
 from pyxalign.timing.timer_utils import timer
+from pyxalign.transformations.helpers import round_to_divisor
 
 
 class Transformation(ABC):
@@ -243,6 +246,45 @@ class Cropper(Transformation):
             vertical_range = crop_options.vertical_range
         return horizontal_range, vertical_range
 
+    @staticmethod
+    def fix_crop_range(crop_options: CropOptions, multiple_of: int, array_2d_size: tuple) -> CropOptions:
+        # get crop ranges
+        crop_options.horizontal_range, crop_options.vertical_range = (
+            Cropper.get_ranges_from_crop_options(crop_options, array_2d_size)
+        )
+
+        # check if crop options are within the bounds of the array
+        new_crop_options, out_of_bounds = force_crop_options_in_bounds(crop_options, array_2d_size)
+
+        crop_options_updated = False
+        if out_of_bounds:
+            crop_options_updated = True
+            print("WARNING: Specified crop range is outside the bounds of the projections array.")
+
+        # check if crop range is a multiple of the selected value
+        crop_widths = new_crop_options.horizontal_range, new_crop_options.vertical_range
+        if not np.all([(w % multiple_of) == 0 for w in crop_widths]):
+            crop_options_updated = True
+            print(f"WARNING: Specified crop widths are not a multiple of {multiple_of}")
+            new_crop_options.horizontal_range = round_to_divisor(
+                new_crop_options.horizontal_range,
+                RoundType.FLOOR,
+                divisor=int(multiple_of),
+            )
+            new_crop_options.vertical_range = round_to_divisor(
+                new_crop_options.vertical_range,
+                RoundType.FLOOR,
+                divisor=int(multiple_of),
+            )
+
+        if crop_options_updated:
+            print("Crop range is being updated automatically.")
+            print("Original crop options:")
+            print_options(crop_options, include_class_name=False)
+            print("Updated crop options:")
+            print_options(new_crop_options, include_class_name=False)
+
+        return new_crop_options
 
 class Padder(Transformation):
     def __init__(

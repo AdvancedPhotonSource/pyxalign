@@ -29,6 +29,7 @@ from pyxalign.api.options.alignment import CrossCorrelationOptions
 from pyxalign.api.options.transform import CropOptions, ShiftOptions
 from pyxalign.interactions.options.options_editor import BasicOptionsEditor
 from pyxalign.interactions.custom import action_button_style_sheet
+from pyxalign.interactions.roi_selector import CropFromROISelector
 from pyxalign.interactions.viewers.base import ArrayViewer, MultiThreadedWidget
 from pyxalign.transformations.classes import Cropper, Shifter
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
@@ -149,7 +150,14 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         basic_options_list += get_all_attribute_names(CropOptions(), parent_prefix="crop")
         self.options_editor = BasicOptionsEditor(
             self.task.options.cross_correlation,
-            skip_fields=["precision"],
+            skip_fields=[
+                "precision",
+                "crop.horizontal_range",
+                "crop.vertical_range",
+                "crop.horizontal_offset",
+                "crop.vertical_offset",
+                "crop.return_view"
+            ],
             enable_advanced_tab=True,
             basic_options_list=basic_options_list,
             open_panels_list=["crop"],
@@ -162,21 +170,22 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.start_button.clicked.connect(self.start_alignment)
         self.start_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         # add button for showing cropped projections
-        self.open_crop_viewer_button = QPushButton("View Cropped Projections")
+        self.open_crop_viewer_button = QPushButton("Edit Crop Region/Alignment ROI")
         self.open_crop_viewer_button.clicked.connect(self.show_cropped_projections_viewer)
         self.open_crop_viewer_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.options_editor.form_layout.addRow("", self.open_crop_viewer_button)
         # create button layout
         buttons_layout = QHBoxLayout()
         buttons_layout.setAlignment(Qt.AlignLeft)
         buttons_layout.addWidget(self.start_button)
-        buttons_layout.addWidget(self.open_crop_viewer_button)
+        # buttons_layout.addWidget(self.open_crop_viewer_button)
         # add shift results viewer
         self.create_shift_results_plot()
         # add editor and start button to sub-layout
         inputs_layout = QVBoxLayout()
-        inputs_layout.addWidget(self.options_editor)
-        inputs_layout.addWidget(self.canvas)
+        inputs_layout.addWidget(self.options_editor, stretch=2)
         inputs_layout.addLayout(buttons_layout)
+        # inputs_layout.addWidget(self.canvas, stretch=1)
         # inputs_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Preferred, QSizePolicy.Expanding))
         # inputs_layout.addWidget(self.start_button)
 
@@ -188,6 +197,7 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.pre_alignment_viewer = ArrayViewer(
             array3d=proj.data,
             sort_idx=np.argsort(proj.angles),
+            return_index_selector_seperately=False,
             extra_title_strings_list=title_strings,
         )
         pre_align_label = QLabel("Pre Alignment")
@@ -205,16 +215,23 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
             self.pre_alignment_viewer.slider.setValue
         )
         # add results to sub-layout
-        viewers_layout = QVBoxLayout()
-        viewers_layout.addWidget(pre_align_label)
-        viewers_layout.addWidget(self.pre_alignment_viewer)
-        viewers_layout.addWidget(post_align_label)
-        viewers_layout.addWidget(self.post_alignment_viewer)
+        pre_align_layout = QVBoxLayout()
+        pre_align_layout.addWidget(pre_align_label)
+        pre_align_layout.addWidget(self.pre_alignment_viewer)
+        post_align_layout = QVBoxLayout()
+        post_align_layout.addWidget(post_align_label)
+        post_align_layout.addWidget(self.post_alignment_viewer)
+        viewers_layout = QHBoxLayout()
+        viewers_layout.addLayout(pre_align_layout)
+        viewers_layout.addLayout(post_align_layout)
+        outputs_layout = QVBoxLayout()
+        outputs_layout.addLayout(viewers_layout)
+        outputs_layout.addWidget(self.canvas)
 
         # Finalize layout
         layout = QHBoxLayout()
         layout.addLayout(inputs_layout)
-        layout.addLayout(viewers_layout)
+        layout.addLayout(outputs_layout)
         alignment_setup_widget.setLayout(layout)
         tabs.addTab(alignment_setup_widget, "Configure && Start")
 
@@ -253,12 +270,19 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.plot_item.addLegend()
 
     def show_cropped_projections_viewer(self):
-        self.crop_viewer = ArrayViewer(
-            array3d=Cropper(self.options_editor._data.crop).run(self.projections.data),
-            sort_idx=np.argsort(self.projections.angles),
-        )
+        # self.crop_viewer = ArrayViewer(
+        #     array3d=Cropper(self.options_editor._data.crop).run(self.projections.data),
+        #     sort_idx=np.argsort(self.projections.angles),
+        # )
+        self.crop_viewer = CropFromROISelector(self.projections, self.options_editor._data.crop)
+        self.crop_viewer.crop_region_selected.connect(self.update_crop_options)
         # self.crop_viewer.setAttribute(Qt.WA_DeleteOnClose)
         self.crop_viewer.show()
+
+    def update_crop_options(self):
+        self.task.options.cross_correlation.crop = self.crop_viewer.crop_options
+        self.crop_viewer.close()
+        # self.options_editor._data.crop.horizontal_range = self.crop_viewer.crop_options
 
 
 @switch_to_matplotlib_qt_backend

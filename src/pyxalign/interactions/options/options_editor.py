@@ -703,11 +703,11 @@ class BasicOptionsEditor(QWidget):
         scroll_area.setWidgetResizable(True)
 
         scroll_widget = QWidget()
-        form_layout = QFormLayout()
-        form_layout.setRowWrapPolicy(QFormLayout.WrapAllRows)
+        self.form_layout = QFormLayout()
+        self.form_layout.setRowWrapPolicy(QFormLayout.WrapAllRows)
         scroll_widget.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        scroll_widget.setLayout(form_layout)
+        self.form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        scroll_widget.setLayout(self.form_layout)
 
         scroll_area.setWidget(scroll_widget)
         basic_layout.addWidget(scroll_area)
@@ -715,7 +715,7 @@ class BasicOptionsEditor(QWidget):
         # Add fields using the new filtering system
         self._add_dataclass_fields(
             self._data,
-            form_layout,
+            self.form_layout,
             file_dialog_fields=file_dialog_fields,
             folder_dialog_fields=folder_dialog_fields,
             open_panels_list=open_panels_list,
