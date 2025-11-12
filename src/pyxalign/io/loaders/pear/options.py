@@ -170,7 +170,7 @@ class Microprobe2IDELoadOptions(MDAPEARLoadOptions):
     * processed using the **PEAR wrapper** for **Pty-Chi**
     """
 
-    _mda_file_pattern: MDAFilePatterns = MDAFilePatterns.XFM_MDA_H5
+    _mda_file_pattern: MDAFilePatterns = MDAFilePatterns.XFM_MDA
 
     _angle_pv_string: RotationAnglePVStrings = RotationAnglePVStrings.XFM_M60_VAL
 

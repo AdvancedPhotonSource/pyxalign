@@ -23,6 +23,7 @@ class MDAFilePatterns(StrEnum):
     """
 
     XFM_MDA_H5 = r"2xfm_(\d+)\.mda.h5"
+    XFM_MDA = r"2xfm_(\d+)\.mda"
     BNP_FLY_MDA = r"bnp_fly(\d+)\.mda"
 
 
