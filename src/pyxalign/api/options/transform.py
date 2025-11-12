@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import dataclasses
 from dataclasses import field
 from typing import Optional, Union
-import numpy as np
 from pyxalign.api.enums import ShiftType, DownsampleType, UpsampleType, RotationType, ShearType
 from pyxalign.api.options.device import DeviceOptions
 
@@ -102,3 +101,5 @@ class PadOptions(TransformOptions):
     pad_value: int = 0#"mode"
 
     enabled: bool = False
+
+

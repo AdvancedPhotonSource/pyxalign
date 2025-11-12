@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import (
 )
 
 from pyxalign.api import enums
+from pyxalign.api.options.plotting import ArrayViewerOptions
 from pyxalign.api.options_utils import get_all_attribute_names
 from pyxalign.api.types import r_type
 import pyxalign.data_structures.task as t
@@ -30,6 +31,7 @@ from pyxalign.api.options.transform import CropOptions, ShiftOptions
 from pyxalign.interactions.options.options_editor import BasicOptionsEditor
 from pyxalign.interactions.custom import action_button_style_sheet
 from pyxalign.interactions.roi_selector import CropFromROISelector
+from pyxalign.interactions.viewers.arrays import get_projection_title_strings
 from pyxalign.interactions.viewers.base import ArrayViewer, MultiThreadedWidget
 from pyxalign.transformations.classes import Cropper, Shifter
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
@@ -89,7 +91,7 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
 
     def start_alignment(self):
         wrapped_func = loading_bar_wrapper("Getting cross-correlation alignment")(
-            self.task.get_cross_correlation_shift
+            self.task.get_cross_correlation_shift, block_all_windows=True
         )
         shift = wrapped_func(
             projection_type=self.projection_type,  # should perhaps move the type into "options"
@@ -118,15 +120,10 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
             pinned_results=self.pinned_array,
         )
 
-        sort_idx = np.argsort(self.projections.angles)
-        title_strings = [
-            f", scan {scan}, angle {angle:0.2f}"
-            for scan, angle in zip(self.projections.scan_numbers, self.projections.angles)
-        ]
         self.post_alignment_viewer.reinitialize_all(
             self.pinned_array,
-            sort_idx=sort_idx,
-            extra_title_strings_list=title_strings,
+            sort_idx=self.sort_idx,
+            extra_title_strings_list=self.title_strings,
         )
         # Enable the ArrayViewer
         self.post_alignment_viewer.setEnabled(True)
@@ -190,20 +187,25 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         # inputs_layout.addWidget(self.start_button)
 
         # Make results display for showing before and after
-        title_strings = [
-            f", scan {scan}, angle {angle:0.2f}"
-            for scan, angle in zip(self.projections.scan_numbers, self.projections.angles)
-        ]
+        self.title_strings = get_projection_title_strings(
+                self.projections.scan_numbers, self.projections.angles
+            )
+        self.sort_idx = np.argsort(np.argsort(proj.angles))
         self.pre_alignment_viewer = ArrayViewer(
             array3d=proj.data,
-            sort_idx=np.argsort(proj.angles),
-            return_index_selector_seperately=False,
-            extra_title_strings_list=title_strings,
+            sort_idx=self.sort_idx,
+            return_index_selector_seperately=True,
+            extra_title_strings_list=self.title_strings,
+            options=ArrayViewerOptions(
+                additional_spinbox_indexing=[self.projections.scan_numbers],
+                additional_spinbox_titles=["scan number"],
+            )
         )
+
         pre_align_label = QLabel("Pre Alignment")
         pre_align_label.setStyleSheet("QLabel { font-size: 14pt;}")
         # viewer for showing aligned data
-        self.post_alignment_viewer = ArrayViewer(hide_index_selector_controls=True)
+        self.post_alignment_viewer = ArrayViewer(return_index_selector_seperately=True)
         self.post_alignment_viewer.setEnabled(False)  # Initially disabled
         post_align_label = QLabel("Post Alignment")
         post_align_label.setStyleSheet("QLabel { font-size: 14pt;}")
@@ -226,6 +228,7 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         viewers_layout.addLayout(post_align_layout)
         outputs_layout = QVBoxLayout()
         outputs_layout.addLayout(viewers_layout)
+        outputs_layout.addWidget(self.pre_alignment_viewer.indexing_widget)
         outputs_layout.addWidget(self.canvas)
 
         # Finalize layout

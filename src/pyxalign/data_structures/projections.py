@@ -37,7 +37,7 @@ from pyxalign.api.options.transform import (
 import pyxalign.gpu_utils as gpu_utils
 from pyxalign.gpu_wrapper import device_handling_wrapper
 from pyxalign.data_structures.volume import Volume
-from pyxalign.mask import force_rectangular_roi_in_bounds
+from pyxalign.transformations.helpers import force_rectangular_roi_in_bounds
 from pyxalign.mask import build_masks_from_threshold, get_masks_from_roi, get_simulated_probe_for_masks
 from pyxalign.io.utils import load_list_of_arrays
 from pyxalign.io.save import save_generic_data_structure_to_h5

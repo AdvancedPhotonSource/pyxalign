@@ -6,7 +6,6 @@ import cupyx.scipy
 import cupyx.scipy.ndimage
 import scipy.ndimage
 import skimage
-import copy
 import scipy.fft
 from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm
@@ -15,13 +14,11 @@ from pyxalign import gpu_utils
 from pyxalign.api.enums import RoundType
 from pyxalign.api.options.device import DeviceOptions
 from pyxalign.api.options.projections import SimulatedProbeOptions
-from pyxalign.api.options.roi import ROIOptions, ROIType, RectangularROIOptions
-from pyxalign.api.options.transform import CropOptions
+from pyxalign.api.options.roi import ROIOptions, ROIType
 from pyxalign.gpu_wrapper import device_handling_wrapper
 
 # from pyxalign.interactions.mask import ThresholdSelector, illum_map_threshold_plotter
 from pyxalign.model_functions import symmetric_gaussian_2d
-from pyxalign.transformations.classes import Cropper
 from pyxalign.transformations.helpers import is_array_real, round_to_divisor
 from IPython.display import display
 import plotly.graph_objects as go
@@ -424,78 +421,3 @@ def get_masks_from_roi(roi_options: ROIOptions, array_3d_size: tuple) -> np.ndar
         raise NotImplementedError("Elliptical ROI not yet supported")
     return masks
 
-def force_bounds(
-    horizontal_range: int,
-    vertical_range: int,
-    horizontal_offset: int,
-    vertical_offset: int,
-    array_2d_size: tuple,
-) -> tuple:
-
-    x0, y0 = int(np.floor(array_2d_size[1] / 2)), int(np.floor(array_2d_size[0] / 2))
-    c_x, c_y, w_x, w_y = (
-        horizontal_offset,
-        vertical_offset,
-        horizontal_range,
-        vertical_range
-    )
-    x_start, x_end = x0 + c_x - int(np.floor(w_x / 2)), x0 + c_x + int(np.floor(w_x / 2))
-    y_start, y_end = y0 + c_y - int(np.floor(w_y / 2)), y0 + c_y + int(np.floor(w_y / 2))
-
-    out_of_bounds = False
-    if x_start < 0:
-        x_start = 0
-        c_x = -(int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2)))
-        out_of_bounds = True
-    if x_end > array_2d_size[1]:
-        x_end = array_2d_size[1]
-        c_x = int(np.floor(array_2d_size[1] / 2)) - int(np.floor((x_end - x_start) / 2))
-        out_of_bounds = True
-    if y_start < 0:
-        y_start = 0
-        c_y = -(int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2)))
-        out_of_bounds = True
-    if y_end > array_2d_size[0]:
-        y_end = array_2d_size[0]
-        c_y = int(np.floor(array_2d_size[0] / 2)) - int(np.floor((y_end - y_start) / 2))
-        out_of_bounds = True
-
-    new_w_x, new_w_y = x_end - x_start, y_end - y_start
-
-    return new_w_x, new_w_y, c_x, c_y, out_of_bounds
-
-def force_crop_options_in_bounds(crop_options: CropOptions, array_2d_size: tuple) -> tuple[CropOptions, bool]:
-    horizontal_range, vertical_range = Cropper.get_ranges_from_crop_options(crop_options, array_2d_size)
-    new_w_x, new_w_y, c_x, c_y, out_of_bounds = force_bounds(
-        horizontal_range=horizontal_range,
-        vertical_range=vertical_range,
-        horizontal_offset=crop_options.horizontal_offset,
-        vertical_offset=crop_options.vertical_offset,
-        array_2d_size=array_2d_size,
-    )
-    new_crop_options = copy.deepcopy(crop_options)
-    new_crop_options.horizontal_range = new_w_x
-    new_crop_options.vertical_range = new_w_y
-    new_crop_options.horizontal_offset = c_x
-    new_crop_options.vertical_offset = c_y
-
-    return new_crop_options, out_of_bounds
-
-def force_rectangular_roi_in_bounds(
-    rect_roi_options: RectangularROIOptions, array_2d_size: tuple
-) -> RectangularROIOptions:
-    new_w_x, new_w_y, c_x, c_y, out_of_bounds = force_bounds(
-        horizontal_range=rect_roi_options.horizontal_range,
-        vertical_range=rect_roi_options.vertical_range,
-        horizontal_offset=rect_roi_options.horizontal_offset,
-        vertical_offset=rect_roi_options.vertical_offset,
-        array_2d_size=array_2d_size,
-    )
-    new_rect_roi_options = RectangularROIOptions(
-        horizontal_range=new_w_x,
-        vertical_range=new_w_y,
-        horizontal_offset=c_x,
-        vertical_offset=c_y,
-    )
-
-    return new_rect_roi_options

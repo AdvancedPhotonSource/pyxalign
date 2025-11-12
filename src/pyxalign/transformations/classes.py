@@ -3,6 +3,7 @@ from typing import Optional
 import numpy as np
 from scipy import stats
 from tqdm import tqdm
+import copy
 from pyxalign.api.enums import DownsampleType, DeviceType, RoundType, ShiftType
 
 import pyxalign.api.maps as maps
@@ -21,10 +22,9 @@ from pyxalign.api.options.transform import (
 from pyxalign.api.options_utils import print_options
 from pyxalign.api.types import ArrayType
 from pyxalign.gpu_wrapper import device_handling_wrapper
-from pyxalign.mask import force_crop_options_in_bounds
 from pyxalign.transformations.functions import eliminate_wrapping_from_shift, image_crop, image_crop_pad
 from pyxalign.timing.timer_utils import timer
-from pyxalign.transformations.helpers import round_to_divisor
+from pyxalign.transformations.helpers import force_roi_parameters_into_array_bounds, round_to_divisor
 
 
 class Transformation(ABC):
@@ -205,6 +205,24 @@ class Shearer(Transformation):
             return images
 
 
+def force_crop_options_in_bounds(crop_options: CropOptions, array_2d_size: tuple) -> tuple[CropOptions, bool]:
+    horizontal_range, vertical_range = Cropper.get_ranges_from_crop_options(crop_options, array_2d_size)
+    new_w_x, new_w_y, c_x, c_y, out_of_bounds = force_roi_parameters_into_array_bounds(
+        horizontal_range=horizontal_range,
+        vertical_range=vertical_range,
+        horizontal_offset=crop_options.horizontal_offset,
+        vertical_offset=crop_options.vertical_offset,
+        array_2d_size=array_2d_size,
+    )
+    new_crop_options = copy.deepcopy(crop_options)
+    new_crop_options.horizontal_range = new_w_x
+    new_crop_options.vertical_range = new_w_y
+    new_crop_options.horizontal_offset = c_x
+    new_crop_options.vertical_offset = c_y
+
+    return new_crop_options, out_of_bounds
+
+
 class Cropper(Transformation):
     def __init__(
         self,
@@ -319,3 +337,5 @@ class Padder(Transformation):
             return padded_images
         else:
             return images
+
+

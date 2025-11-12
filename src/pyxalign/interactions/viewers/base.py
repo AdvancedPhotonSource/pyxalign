@@ -182,7 +182,6 @@ class ArrayViewer(MultiThreadedWidget):
 
         # Main layout
         layout = QVBoxLayout()
-        # In the original code, a matplotlib toolbar was added, but we omit it for pyqtgraph usage
         layout.addWidget(self.auto_clim_check_box)
         layout.addWidget(self.graphics_layout)
         if not return_index_selector_seperately:
@@ -303,7 +302,6 @@ class ArrayViewer(MultiThreadedWidget):
                 )
 
     def start(self):
-        """Show the widget."""
         """Show the widget."""
         self.show()
 

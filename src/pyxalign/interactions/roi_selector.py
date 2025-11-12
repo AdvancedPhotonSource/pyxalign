@@ -28,7 +28,7 @@ from pyxalign.api.options_utils import print_options
 from pyxalign.data_structures.projections import Projections
 from pyxalign.interactions.viewers.base import ArrayViewer
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
-from pyxalign.mask import force_rectangular_roi_in_bounds
+from pyxalign.transformations.helpers import force_rectangular_roi_in_bounds
 
 
 class ROISelector(QWidget):
