@@ -405,12 +405,16 @@ class Projections:
             `gui = pyxalign.gui.launch_mask_selection_from_roi()`.
         """
         if self.options.masks_from_roi.shape == ROIType.RECTANGULAR:
-            self.options.masks_from_roi.rectangle = force_rectangular_roi_in_bounds(
+            # handle default values of rectangular ROI options and force
+            # ROI in bounds if necessary
+            updated_rect_roi_options = force_rectangular_roi_in_bounds(
                 self.options.masks_from_roi.rectangle, self.data.shape[1:]
             )
-        self.masks = get_masks_from_roi(self.options.masks_from_roi, self.data.shape)
+            updated_roi_options = copy.copy(self.options.masks_from_roi)
+            updated_roi_options.rectangle = updated_rect_roi_options
+        self.masks = get_masks_from_roi(updated_roi_options, self.data.shape)
         print("Updated masks, used mask ROI options:")
-        print_options(self.options.masks_from_roi, include_class_name=False)
+        print_options(updated_roi_options, include_class_name=False)
 
     def drop_projections(self, remove_scans: list[int], repin_array: bool = False):
         "Permanently remove specific projections from object"
@@ -781,6 +785,15 @@ class Projections:
 
 class ComplexProjections(Projections):
     def unwrap_phase(self, pinned_results: Optional[np.ndarray] = None) -> ArrayType:
+
+        ramp_options = self.options.phase_unwrap.remove_ramp_using_air_gap
+        if (
+            ramp_options.enabled
+            and ramp_options.air_region.horizontal_range is None
+            and ramp_options.air_region.vertical_range is None
+        ):
+            raise ValueError("Air gap ramp removal is enabled, but the air_region ROI was not specified.")
+
         # this method always needs a mask
         bool_1 = (
             self.options.phase_unwrap.method
@@ -791,7 +804,7 @@ class ComplexProjections(Projections):
             self.options.phase_unwrap.method == enums.PhaseUnwrapMethods.GRADIENT_INTEGRATION
         ) and (self.options.phase_unwrap.gradient_integration.use_masks)
         use_masks = bool_1 or bool_2
-        if use_masks is True and self.masks is None:
+        if use_masks and self.masks is None:
             raise ValueError(
                 "Phase unwrapping requires masks for the selected phase_unwrap settings, but masks do not exist"
             )

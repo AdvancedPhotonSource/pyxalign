@@ -5,7 +5,7 @@ This module provides tools for interactively selecting rectangular regions
 of interest in 3D array data using click-and-drag mouse interaction.
 """
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import copy
@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
 )
 
-from pyxalign.api.options.roi import ROIOptions, ROIType
+from pyxalign.api.options.roi import ROIOptions, ROIType, RectangularROIOptions
 from pyxalign.api.options.transform import CropOptions
 from pyxalign.api.options_utils import print_options
 from pyxalign.data_structures.projections import Projections
@@ -414,31 +414,41 @@ class MaskFromROISelector(QWidget):
         self.setLayout(layout)
 
 
-class CropFromROISelector(QWidget):
-    crop_region_selected = pyqtSignal()
+class GetBoxBoundsFromROISelector(QWidget):
+    rectangular_roi_selected = pyqtSignal()
 
     def __init__(
         self,
         projections: Projections,
-        crop_options: Optional[CropOptions] = None,
+        options: Union[CropOptions, RectangularROIOptions],
         parent: Optional[QWidget] = None,
     ):
         """
-        Widget for returning an instance of `CropOptions` by interactively
-        selecting its values.
+        Widget for returning an instance of `CropOptions` or 
+        `RectangularROIOptions` by interactively selecting its values.
 
         Args:
-            projections (Projections): Projections object to create `CropOptions`
-                instance for.
+            projections (Projections): Projections object to create the 
+                options instance for.
+            options: Options to initialize the ROISelector with. The 
+                type of `options` dictates the type of options that will
+                be created.
         """
         super().__init__(parent)
 
+        self.return_type = options.__class__
+
         roi_options = ROIOptions(shape=ROIType.RECTANGULAR)
-        if crop_options is not None:
-            roi_options.rectangle.horizontal_range = crop_options.horizontal_range
-            roi_options.rectangle.vertical_range = crop_options.vertical_range
-            roi_options.rectangle.horizontal_offset = crop_options.horizontal_offset
-            roi_options.rectangle.vertical_offset = crop_options.vertical_offset
+        if options.__class__.__qualname__ == "CropOptions":
+            # convert CropOptions to ROIOptions
+            roi_options.rectangle.horizontal_range = options.horizontal_range
+            roi_options.rectangle.vertical_range = options.vertical_range
+            roi_options.rectangle.horizontal_offset = options.horizontal_offset
+            roi_options.rectangle.vertical_offset = options.vertical_offset
+        elif options.__class__.__qualname__ == "RectangularROIOptions":
+            roi_options.rectangle = options
+        else:
+            raise ValueError
 
         self.projections = projections
         self.roi_selector = ROISelector(
@@ -451,19 +461,20 @@ class CropFromROISelector(QWidget):
         self.setup_ui()
 
     def finish(self):
-        if self.roi_selector.roi_options.shape == ROIType.RECTANGULAR:
-            self.roi_selector.roi_options.rectangle = force_rectangular_roi_in_bounds(
-                self.roi_selector.roi_options.rectangle,
-                array_2d_size=self.projections.data.shape[1:],
-            )
-        self.crop_options = CropOptions(
+        self.roi_selector.roi_options.rectangle = force_rectangular_roi_in_bounds(
+            self.roi_selector.roi_options.rectangle,
+            array_2d_size=self.projections.data.shape[1:],
+        )
+
+        self.options = self.return_type(
             horizontal_range=self.roi_selector.roi_options.rectangle.horizontal_range,
             vertical_range=self.roi_selector.roi_options.rectangle.vertical_range,
             horizontal_offset=self.roi_selector.roi_options.rectangle.horizontal_offset,
             vertical_offset=self.roi_selector.roi_options.rectangle.vertical_offset,
-            enabled=True,
         )
-        self.crop_region_selected.emit()
+        if self.return_type.__qualname__ == "CropOptions":
+            self.options.enabled = True
+        self.rectangular_roi_selected.emit()
 
     def setup_ui(self):
         """Setup the widget layout."""
@@ -539,17 +550,19 @@ def launch_crop_window_selection(
             task.phase_projections.options.crop = crop_options
     """
     app = QApplication.instance() or QApplication([])
-    gui = CropFromROISelector(projections, crop_options)
+    if crop_options is None:
+        crop_options = CropOptions()
+    gui = GetBoxBoundsFromROISelector(projections, crop_options)
 
     # Define a slot to handle the signal containing the
     # loaded data
     result = {}
 
     def on_crop_region_selected():
-        result["data"] = gui.crop_options
+        result["data"] = gui.options
         app.quit()
 
-    gui.crop_region_selected.connect(on_crop_region_selected)
+    gui.rectangular_roi_selected.connect(on_crop_region_selected)
 
     gui.show()
     app.exec()

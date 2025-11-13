@@ -3,6 +3,7 @@ from functools import wraps
 from numbers import Number
 from typing import Sequence
 import numpy as np
+from pytest import version_tuple
 from pyxalign.api.enums import RoundType
 from pyxalign.api.options.roi import RectangularROIOptions
 from pyxalign.api.types import ArrayType
@@ -58,6 +59,11 @@ def force_roi_parameters_into_array_bounds(
     vertical_offset: int,
     array_2d_size: tuple,
 ) -> tuple:
+    
+    if horizontal_range is None:
+        horizontal_range = array_2d_size[1]
+    if vertical_range is None:
+        vertical_range = array_2d_size[0]
 
     x0, y0 = int(np.floor(array_2d_size[1] / 2)), int(np.floor(array_2d_size[0] / 2))
     c_x, c_y, w_x, w_y = (

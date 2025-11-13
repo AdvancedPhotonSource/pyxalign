@@ -166,6 +166,7 @@ def memory_releasing_error_handler(func, show_info: bool = False) -> T:
         except Exception as ex:
             print(f"An error occurred: {type(ex).__name__}: {str(ex)}")
             traceback.print_exc()
+            # should probably remove the top two lines and add a raise?
         finally:
             for gpu in get_available_gpus():
                 with cp.cuda.Device(gpu):

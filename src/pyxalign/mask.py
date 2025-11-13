@@ -403,6 +403,7 @@ def get_simulated_probe_for_masks(
     return probe
 
 
+@timer()
 def get_masks_from_roi(roi_options: ROIOptions, array_3d_size: tuple) -> np.ndarray:
     if roi_options.shape == ROIType.RECTANGULAR:
         masks = np.zeros(array_3d_size, dtype=r_type)

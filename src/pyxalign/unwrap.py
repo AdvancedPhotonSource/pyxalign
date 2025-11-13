@@ -5,9 +5,13 @@ import scipy
 import math
 from pyxalign.api.enums import ImageGradientMethods, ImageIntegrationMethods, PhaseUnwrapMethods
 from pyxalign.api.options.options import PhaseUnwrapOptions
+from pyxalign.api.options.roi import ROIOptions, RectangularROIOptions
+from pyxalign.api.options.transform import CropOptions
 from pyxalign.api.types import r_type, c_type, ArrayType
 from pyxalign.gpu_utils import memory_releasing_error_handler, get_scipy_module
+from pyxalign.mask import get_masks_from_roi
 from pyxalign.timing.timer_utils import timer, InlineTimer
+from pyxalign.transformations.classes import Cropper
 from pyxalign.transformations.functions import image_shift_fft
 
 
@@ -43,12 +47,11 @@ def unwrap_phase(
             images,
             weights,
             options.iterative_residual.iterations,
-            options.iterative_residual.lsq_fit_ramp_removal,
         )
     elif options.method == PhaseUnwrapMethods.GRADIENT_INTEGRATION:
         unwrapped_phase = xp.zeros(shape=images.shape, dtype=r_type)
         for i in range(len(images)):
-            if options.gradient_integration.use_masks:
+            if options.gradient_integration.use_masks: # this should be default I think.
                 weight_map = weights[i]
             else:
                 weight_map = None
@@ -60,6 +63,15 @@ def unwrap_phase(
                 weight_map=weight_map,
                 deramp_polyfit_order=options.gradient_integration.deramp_polyfit_order,
             )
+
+    # remove phase ramp
+    if options.remove_ramp_using_air_gap.enabled:
+        unwrapped_phase = remove_phase_ramp(
+            unwrapped_phase,
+            weights,
+            air_gap_roi=options.remove_ramp_using_air_gap.air_region,
+            polyfit_order=options.remove_ramp_using_air_gap.polyfit_order,
+        )
     return unwrapped_phase
 
 
@@ -69,7 +81,6 @@ def unwrap_phase_iterative_residual_correction(
     images: ArrayType,
     weights: ArrayType,
     iterations: int,
-    lsq_fit_ramp_removal: Optional[bool] = False,
 ):
     """Unwrap phase using iterative residual correction method.
 
@@ -95,24 +106,20 @@ def unwrap_phase_iterative_residual_correction(
     # Ensure the weights are all between 0 and 1
     weights[weights < 0] = 0
     weights = weights / weights.max()
-    bool_weights = weights.astype(bool)
+    # bool_weights = weights.astype(bool)
     phase_block = 0
     for i in range(iterations):
         if i == 0:
             images_resid = images
         else:
             images_resid = images * xp.exp(-1j * phase_block)
-        phase_block = phase_block + weights * phase_unwrap_2D(images_resid, weights)
-        # if empty_region != []:
-        #   raise NotImplementedError
-        # phase_block = remove_sinogram_ramp(phase_block, empty_region, options.poly_fit_order)
-    # Remove phase ramp
-    if lsq_fit_ramp_removal:
-        for j in range(len(phase_block)):
-            phase_block[j] = remove_phase_ramp(phase_block[j], bool_weights[j])
+        phase_block = phase_block + phase_unwrap_2D(images_resid, weights) * weights
+        # if enable_air_gap_ramp_removal:
+        #     phase_block = remove_sinogram_ramp(phase_block, weights, air_gap_roi=air_gap, polyfit_order=polyfit_order)
     return phase_block
 
 
+@timer()
 def phase_unwrap_2D(images: ArrayType, weights: ArrayType, padding: int = 64):
     """Perform 2D phase unwrapping using Fourier gradient integration.
 
@@ -299,6 +306,7 @@ def unwrap_phase_gradient_integration(
         phase = phase[padding[0] : -padding[0], padding[1] : -padding[1]]
 
     if flat_region_mask is not None:
+        # doesn't run
         phase = remove_polynomial_background(
             phase, flat_region_mask, polyfit_order=deramp_polyfit_order
         )
@@ -310,6 +318,7 @@ def unwrap_phase_gradient_integration(
     return phase
 
 
+# doesn't run
 @timer()
 def remove_polynomial_background(
     images: ArrayType,
@@ -359,11 +368,11 @@ def remove_polynomial_background(
     const_basis = xp.ones(len(ys))
     const_basis_full = xp.ones(len(y_full))
 
-    a_mat = xp.stack(y_all_orders + x_all_orders + [const_basis], dim=1)
+    a_mat = xp.stack(y_all_orders + x_all_orders + [const_basis], axis=1)
     b_vec = images[flat_region_mask].reshape(-1, 1)
     x_vec = xp.linalg.solve(a_mat, b_vec)
     a_mat_full = xp.stack(
-        y_full_all_orders + x_full_all_orders + [const_basis_full], dim=1
+        y_full_all_orders + x_full_all_orders + [const_basis_full], axis=1
     )
     bg = a_mat_full @ x_vec
     bg = bg.reshape(images.shape)
@@ -660,25 +669,38 @@ def convolve1d(
 
 
 @timer()
-def remove_phase_ramp(phase: ArrayType, mask: np.ndarray):
-    """Remove the phase ramp from a 2D phase array using masked region estimation.
+def remove_phase_ramp_using_empty_region(
+    phase: ArrayType, 
+    empty_region_mask: np.ndarray, 
+    order: int = 1
+):
+    """Remove polynomial phase trends from a 2D phase array using masked region estimation.
 
-    This function removes linear phase ramps from a 2D phase array by fitting
-    a plane to the masked region and subtracting it from the entire array.
+    This function removes polynomial phase trends from a 2D phase array by fitting
+    a polynomial surface to the masked region and subtracting it from the entire array.
 
     Args:
         phase: A 2D array representing the phase (in radians).
-        mask: A 2D boolean array (same shape as `phase`), where True indicates
-            the region to use for phase ramp estimation.
+        empty_region_mask: A 2D boolean array (same shape as `phase`), 
+            where True indicates the region to use for phase trend 
+            estimation.
+        order: Polynomial order for the fit (default=1 for linear/planar fit).
+            - order=1: linear ramp (a*x + b*y + c)
+            - order=2: quadratic (a*x² + b*y² + c*xy + d*x + e*y + f)
+            - order=3: cubic, etc.
 
     Returns:
         The phase-corrected 2D array.
 
     Raises:
         ValueError: If phase and mask arrays have different shapes.
+        ValueError: If order is less than 1.
     """
-    if phase.shape != mask.shape:
+    if phase.shape != empty_region_mask.shape:
         raise ValueError("Phase and mask arrays must have the same shape.")
+    
+    if order < 1:
+        raise ValueError("Polynomial order must be at least 1.")
 
     xp = cp.get_array_module(phase)
 
@@ -691,15 +713,24 @@ def remove_phase_ramp(phase: ArrayType, mask: np.ndarray):
     inline_timer = InlineTimer("extract masked data")
     inline_timer.start()
     # Extract only masked data
-    x_masked = x[mask]
-    y_masked = y[mask]
-    phase_masked = phase[mask]
+    x_masked = x[empty_region_mask]
+    y_masked = y[empty_region_mask]
+    phase_masked = phase[empty_region_mask]
     inline_timer.end()
 
     inline_timer = InlineTimer("get design matrix")
     inline_timer.start()
-    # Construct the design matrix A for Ax = b (where A contains x, y, and constant terms)
-    A = xp.column_stack((x_masked, y_masked, xp.ones_like(x_masked)))
+    # Construct the design matrix A for polynomial fit
+    # Generate all polynomial terms up to the specified order
+    A_columns = []
+    for total_degree in range(order + 1):
+        for x_degree in range(total_degree + 1):
+            y_degree = total_degree - x_degree
+            # Add term: x^x_degree * y^y_degree
+            term = (x_masked ** x_degree) * (y_masked ** y_degree)
+            A_columns.append(term)
+    
+    A = xp.column_stack(A_columns)
     b = phase_masked
     inline_timer.end()
 
@@ -716,18 +747,25 @@ def remove_phase_ramp(phase: ArrayType, mask: np.ndarray):
     atb_timer.end()
     solve_timer = InlineTimer("solve")
     solve_timer.start()
-    params_opt = AtA_inv @ Atb  # Solve for [a, b, c]
+    params_opt = AtA_inv @ Atb  # Solve for polynomial coefficients
     solve_timer.end()
     inline_timer.end()
 
     inline_timer = InlineTimer("compute ramp over full grid")
     inline_timer.start()
-    # Compute the phase ramp over the full grid
-    phase_ramp = params_opt[0] * x + params_opt[1] * y + params_opt[2]
+    # Compute the polynomial surface over the full grid
+    phase_trend = xp.zeros_like(phase)
+    param_idx = 0
+    for total_degree in range(order + 1):
+        for x_degree in range(total_degree + 1):
+            y_degree = total_degree - x_degree
+            # Add term: coefficient * x^x_degree * y^y_degree
+            phase_trend += params_opt[param_idx] * (x ** x_degree) * (y ** y_degree)
+            param_idx += 1
     inline_timer.end()
 
-    # Remove the phase ramp
-    return phase - phase_ramp
+    # Remove the phase trend
+    return phase - phase_trend
 
 
 @timer()
@@ -928,3 +966,20 @@ def get_image_grad(images: ArrayType):
     dY = scipy_module.fft.ifft(dY, axis=1)
 
     return dX, dY
+
+
+@timer()
+def remove_phase_ramp(
+    sinogram: ArrayType, weights: ArrayType, air_gap_roi: CropOptions, polyfit_order: int = 1
+) -> ArrayType:
+    # the air_region mask manipulation is what is taking the longest here
+    air_region_mask = get_masks_from_roi(ROIOptions(rectangle=air_gap_roi), sinogram.shape)
+    air_region_mask *= weights.get()
+    for i in range(len(sinogram)):
+        sinogram[i] = (
+            remove_phase_ramp_using_empty_region(
+                sinogram[i], air_region_mask[i].astype(bool), polyfit_order
+            )
+            * weights[i]
+        )
+    return sinogram

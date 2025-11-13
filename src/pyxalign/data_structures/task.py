@@ -128,8 +128,13 @@ class LaminographyAlignmentTask:
             gui.close()
         self.pma_gui_list = []
 
-    def get_unwrapped_phase(self, pinned_results: Optional[np.ndarray] = None):
-        if pinned_results is None:
+    def get_unwrapped_phase(
+        self, pinned_results: Optional[np.ndarray] = None, skip_pinning: bool = False
+    ):
+        if self.complex_projections is None:
+            raise ValueError("No complex projections available for phase unwrapping")
+
+        if not skip_pinning and pinned_results is None:
             if (
                 self.phase_projections is not None
                 and self.phase_projections.data.shape == self.complex_projections.data.shape

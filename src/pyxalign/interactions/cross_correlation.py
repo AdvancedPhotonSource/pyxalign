@@ -30,7 +30,7 @@ from pyxalign.api.options.alignment import CrossCorrelationOptions
 from pyxalign.api.options.transform import CropOptions, ShiftOptions
 from pyxalign.interactions.options.options_editor import BasicOptionsEditor
 from pyxalign.interactions.custom import action_button_style_sheet
-from pyxalign.interactions.roi_selector import CropFromROISelector
+from pyxalign.interactions.roi_selector import GetBoxBoundsFromROISelector
 from pyxalign.interactions.viewers.arrays import get_projection_title_strings
 from pyxalign.interactions.viewers.base import ArrayViewer, MultiThreadedWidget
 from pyxalign.transformations.classes import Cropper, Shifter
@@ -274,17 +274,12 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
         self.plot_item.addLegend()
 
     def show_cropped_projections_viewer(self):
-        # self.crop_viewer = ArrayViewer(
-        #     array3d=Cropper(self.options_editor._data.crop).run(self.projections.data),
-        #     sort_idx=np.argsort(self.projections.angles),
-        # )
-        self.crop_viewer = CropFromROISelector(self.projections, self.options_editor._data.crop)
-        self.crop_viewer.crop_region_selected.connect(self.update_crop_options)
-        # self.crop_viewer.setAttribute(Qt.WA_DeleteOnClose)
+        self.crop_viewer = GetBoxBoundsFromROISelector(self.projections, self.options_editor._data.crop)
+        self.crop_viewer.rectangular_roi_selected.connect(self.update_crop_options)
         self.crop_viewer.show()
 
     def update_crop_options(self):
-        self.task.options.cross_correlation.crop = self.crop_viewer.crop_options
+        self.task.options.cross_correlation.crop = self.crop_viewer.options
         self.crop_viewer.close()
         # self.options_editor._data.crop.horizontal_range = self.crop_viewer.crop_options
 
