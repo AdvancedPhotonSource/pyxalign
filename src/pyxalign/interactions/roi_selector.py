@@ -25,7 +25,8 @@ from PyQt5.QtWidgets import (
 from pyxalign.api.options.roi import ROIOptions, ROIType, RectangularROIOptions
 from pyxalign.api.options.transform import CropOptions
 from pyxalign.api.options_utils import print_options
-from pyxalign.data_structures.projections import Projections
+import pyxalign.data_structures.projections as p
+from pyxalign.interactions.utils.loading_display_tools import loading_bar_wrapper
 from pyxalign.interactions.viewers.base import ArrayViewer
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 from pyxalign.transformations.helpers import force_rectangular_roi_in_bounds
@@ -376,7 +377,9 @@ class ROISelector(QWidget):
 
 
 class MaskFromROISelector(QWidget):
-    def __init__(self, projections: Projections, parent: Optional[QWidget] = None):
+    masks_created = pyqtSignal()
+
+    def __init__(self, projections: "p.Projections", parent: Optional[QWidget] = None):
         """
         Widget for choosing masks by selecting the ROI interactly.
 
@@ -398,7 +401,12 @@ class MaskFromROISelector(QWidget):
 
     def finish(self):
         self.projections.options.masks_from_roi = self.roi_selector.roi_options
+        wrapped_func = loading_bar_wrapper("Creating masks from selected area...", True)(
+            self.projections.get_masks_from_roi_selection
+        )
+        wrapped_func()
         self.projections.get_masks_from_roi_selection()
+        self.masks_created.emit()
         self.close()
 
     def setup_ui(self):
@@ -419,7 +427,7 @@ class GetBoxBoundsFromROISelector(QWidget):
 
     def __init__(
         self,
-        projections: Projections,
+        projections: "p.Projections",
         options: Union[CropOptions, RectangularROIOptions],
         parent: Optional[QWidget] = None,
     ):
@@ -491,7 +499,7 @@ class GetBoxBoundsFromROISelector(QWidget):
 
 @switch_to_matplotlib_qt_backend
 def launch_mask_selection_from_roi(
-    projections: Projections,
+    projections: "p.Projections",
     wait_until_closed: bool = False,
 ) -> MaskFromROISelector:
     """
@@ -527,7 +535,7 @@ def launch_mask_selection_from_roi(
 
 @switch_to_matplotlib_qt_backend
 def launch_crop_window_selection(
-    projections: Projections,
+    projections: "p.Projections",
     crop_options: Optional[CropOptions] = None,
 ) -> MaskFromROISelector:
     """

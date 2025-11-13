@@ -8,6 +8,7 @@ import pyxalign.data_structures.projections as p
 from pyxalign.gpu_utils import return_cpu_array
 from pyxalign.interactions.mask import launch_mask_builder
 from pyxalign.interactions.options.options_editor import BasicOptionsEditor
+from pyxalign.interactions.roi_selector import launch_mask_selection_from_roi
 from pyxalign.interactions.utils.loading_display_tools import loading_bar_wrapper
 from pyxalign.interactions.utils.misc import switch_to_matplotlib_qt_backend
 from pyxalign.interactions.viewers.base import ArrayViewer, IndexSelectorWidget, MultiThreadedWidget
@@ -174,12 +175,23 @@ class ProjectionViewer(MultiThreadedWidget):
             # create button for scan removal tool
             open_scan_removal_button = QPushButton("Open Scan Removal Window")
             open_scan_removal_button.clicked.connect(self.open_scan_removal_window)
-            # create button for the mask creation tol
-            open_mask_creation_button = QPushButton("Open Mask Creation Window")
+            # create button for the mask creation tools
+            open_mask_creation_button = QPushButton("Get Masks from Probe Positions")
             open_mask_creation_button.clicked.connect(self.open_mask_creation_window)
+            if self.projections.probe_positions is None:
+                open_mask_creation_button.setDisabled(True)
+            open_mask_from_roi_button = QPushButton("Get Masks from ROI")
+            open_mask_from_roi_button.clicked.connect(self.open_mask_from_roi_window)
             # create button for editing properties
             open_options_editor_button = QPushButton("Edit Projection Parameters")
             open_options_editor_button.clicked.connect(self.open_options_editor)
+
+            push_button_layout = QVBoxLayout()
+            push_button_layout.addWidget(open_options_editor_button)
+            push_button_layout.addWidget(open_scan_removal_button)
+            push_button_layout.addWidget(QLabel("Mask Creation:"), alignment=Qt.AlignCenter)
+            push_button_layout.addWidget(open_mask_creation_button)
+            push_button_layout.addWidget(open_mask_from_roi_button)
 
         # setup tabs and layout
         tabs = QTabWidget()
@@ -196,9 +208,7 @@ class ProjectionViewer(MultiThreadedWidget):
         array_view_layout.addWidget(left_panel)
         self.left_panel_layout.addWidget(self.button_group_box)
         if not display_only:
-            self.left_panel_layout.addWidget(open_scan_removal_button)
-            self.left_panel_layout.addWidget(open_mask_creation_button)
-            self.left_panel_layout.addWidget(open_options_editor_button)
+            self.left_panel_layout.addLayout(push_button_layout)
         self.left_panel_layout.addSpacerItem(
             QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
         )
@@ -221,16 +231,24 @@ class ProjectionViewer(MultiThreadedWidget):
             all_attributes = get_all_attribute_names(self.projections.options)
             # include only experiment attributes
             basic_options_list = [x for x in all_attributes if "experiment" in x]
-            # skip all other attributes
-            skip_fields = [x for x in all_attributes if "experiment" not in x]
+            basic_options_list += [x for x in all_attributes if "volume_width" in x]
+            # # basic_options_list += [x for x in all_attributes if "reconstruct" in x]
+            # advanced_options_list = [x for x in all_attributes if "reconstruct" in x]
+            # skip selected fields
+            skip_fields = [x for x in all_attributes if "input_processing" in x]
+            if self.projections.__class__.__qualname__ == "PhaseProjections":
+                skip_fields += [x for x in all_attributes if "phase_unwrap" in x]
             # create options editor widget
             self.options_editor = BasicOptionsEditor(
                 self.projections.options,
                 basic_options_list=basic_options_list,
                 skip_fields=skip_fields,
-                open_panels_list=["experiment"],
+                open_panels_list=["experiment", "volume_width", "reconstruct"],
                 label="Projections Options Editor",
+                enable_advanced_tab=True,
+                # advanced_options_list=[x for x in all_attributes if "reconstruct" in x],
             )
+            print([x for x in all_attributes if "reconstruct" in x])
         self.options_editor.show()
 
     def open_scan_removal_window(self):
@@ -250,9 +268,18 @@ class ProjectionViewer(MultiThreadedWidget):
         )
         self.mask_gui.masks_created.connect(self.on_masks_created)
 
+    def open_mask_from_roi_window(self):
+        # build masks from probe positions using the mask builder gui
+        self.mask_gui = launch_mask_selection_from_roi(
+            self.projections,
+            wait_until_closed=False,
+        )
+        self.mask_gui.masks_created.connect(self.on_masks_created)
+
     def on_masks_created(self):
         # update viewer so that new masks are shown
         self.update_array_selector()
+        self.update_arrays()
         self.array_viewer.refresh_frame()
 
     def update_array_selector(self):

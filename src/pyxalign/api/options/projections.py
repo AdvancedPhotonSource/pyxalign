@@ -130,18 +130,11 @@ class ProjectionOptions:
     Options used by the `PhaseProjections` method `get_3D_reconstruction`.
     """
 
-    mask_from_positions: ProbePositionMaskOptions = field(default_factory=ProbePositionMaskOptions)
-    """
-    Options used by the `Projections` method `get_masks_from_probe_positions`.
-    These options are also used by the GUI tools for building masks from probe
-    positions.
-    """
+    volume_width: VolumeWidthOptions = field(default_factory=VolumeWidthOptions)
+    "Determines reconstructed volume size"
 
     phase_unwrap: PhaseUnwrapOptions = field(default_factory=PhaseUnwrapOptions)
     "Options used by the `ComplexProjections` method `unwrap_phase`."
-
-    estimate_center: EstimateCenterOptions = field(default_factory=EstimateCenterOptions)
-    "Options used by the `PhaseProjections` method `estimate_center_of_rotation`"
 
     input_processing: ProjectionTransformOptions = field(default_factory=ProjectionTransformOptions)
     """
@@ -151,8 +144,12 @@ class ProjectionOptions:
     `transform_projections` during initialization.
     """
 
-    volume_width: VolumeWidthOptions = field(default_factory=VolumeWidthOptions)
-    "Determines reconstructed volume size"
+    mask_from_positions: ProbePositionMaskOptions = field(default_factory=ProbePositionMaskOptions)
+    """
+    Options used by the `Projections` method `get_masks_from_probe_positions`.
+    These options are also used by the GUI tools for building masks from probe
+    positions.
+    """
 
     masks_from_roi: ROIOptions = field(default_factory=ROIOptions)
 
@@ -165,3 +162,6 @@ class ProjectionOptions:
     get masks from the probe positions, the functions are slow, and the
     results are often unsatisfactory.
     """
+
+    estimate_center: EstimateCenterOptions = field(default_factory=EstimateCenterOptions)
+    "Options used by the `PhaseProjections` method `estimate_center_of_rotation`"
