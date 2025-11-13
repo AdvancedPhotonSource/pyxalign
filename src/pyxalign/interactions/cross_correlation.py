@@ -42,7 +42,7 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
     def __init__(
         self,
         task: Optional["t.LaminographyAlignmentTask"] = None,
-        projection_type: enums.ProjectionType = enums.ProjectionType.COMPLEX,
+        projection_type: Optional[enums.ProjectionType] = None,
         multi_thread_func: Optional[Callable] = None,
         parent: Optional[QWidget] = None,
     ):
@@ -70,7 +70,7 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
     def projections(self) -> "p.Projections":
         if self.projection_type == enums.ProjectionType.PHASE:
             return self.task.phase_projections
-        else:
+        elif self.projection_type == enums.ProjectionType.COMPLEX:
             return self.task.complex_projections
 
     def initialize_page(self, task: "t.LaminographyAlignmentTask"):
@@ -123,6 +123,9 @@ class CrossCorrelationMasterWidget(MultiThreadedWidget):
             self.pinned_array,
             sort_idx=self.sort_idx,
             extra_title_strings_list=self.title_strings,
+        )
+        self.post_alignment_viewer.indexing_widget.spinbox.setValue(
+            self.pre_alignment_viewer.indexing_widget.spinbox.value()
         )
         # Enable the ArrayViewer
         self.post_alignment_viewer.setEnabled(True)
@@ -309,7 +312,7 @@ def launch_cross_correlation_gui(
 
         First, launch the cross-correlation gui::
 
-            gui = pyxalign.gui.launch_cross_correlation_gui(task, "PHASE")
+            gui = pyxalign.gui.launch_cross_correlation_gui(task, "phase")
 
         Clicking the "start alignment" button will run the cross-
         correlation alignment algorithm with the selected parameters.
@@ -331,12 +334,14 @@ def launch_cross_correlation_gui(
     app = QApplication.instance() or QApplication([])
     if projection_type is None:
         if task.complex_projections is not None and task.phase_projections is not None:
-            print("""Task has both phase_projections and complex_projections; 
-                  specify what you want to align using `projection_type`""")
+            print("projection_type was not specified, defaulting to projection_type='phase'")
+            projection_type = enums.ProjectionType.PHASE
         if task.complex_projections is None:
             projection_type = enums.ProjectionType.PHASE
         elif task.phase_projections is None:
             projection_type = enums.ProjectionType.COMPLEX
+    else:
+        projection_type = projection_type.lower()
     gui = CrossCorrelationMasterWidget(task=task, projection_type=projection_type)
     gui.setAttribute(Qt.WA_DeleteOnClose)
     gui.show()

@@ -100,7 +100,6 @@ class PhaseUnwrapWidget(QWidget):
                 "remove_ramp_using_air_gap.air_region.return_view",
             ],
             open_panels_list=["remove_ramp_using_air_gap"],
-            # advanced_options_list=get_all_attribute_names(DeviceOptions(), parent_prefix="device"),
         )
         # add button for showing cropped projections
         self.open_crop_viewer_button = QPushButton("Edit Air Gap ROI")

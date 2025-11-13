@@ -547,7 +547,7 @@ def launch_crop_window_selection(
         alignment::
 
             crop_options = pyxalign.gui.launch_crop_window_selection(task.phase_projections)
-            task.phase_projections.options.crop = crop_options
+            task.options.projection_matching.crop = crop_options
     """
     app = QApplication.instance() or QApplication([])
     if crop_options is None:
