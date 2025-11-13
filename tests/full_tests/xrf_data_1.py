@@ -61,13 +61,13 @@ def full_2ide_xrf_processing(
             scan_numbers=xrf_standard_data_dict[primary_channel].scan_numbers,
             alignment_options=opts.AlignmentTaskOptions(),
             projection_options=opts.ProjectionOptions(
-                experiment=opts.ExperimentOptions(laminography_angle=90 - lamino_angle),
+                experiment=opts.ExperimentOptions(laminography_angle=lamino_angle),
             ),
             primary_channel=primary_channel,
         )
 
         # remove bad data
-        xrf_task.drop_projections_from_all_channels(remove_scans=[xrf_task.scan_numbers[143]])
+        xrf_task.drop_projections_from_all_channels(remove_scans=[341])
 
         # Update sample thickness and center of rotation
         xrf_task.projection_options.experiment.sample_thickness = 70
