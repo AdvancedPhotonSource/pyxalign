@@ -38,7 +38,11 @@ import pyxalign.gpu_utils as gpu_utils
 from pyxalign.gpu_wrapper import device_handling_wrapper
 from pyxalign.data_structures.volume import Volume
 from pyxalign.transformations.helpers import force_rectangular_roi_in_bounds
-from pyxalign.mask import build_masks_from_threshold, get_masks_from_roi, get_simulated_probe_for_masks
+from pyxalign.mask import (
+    build_masks_from_threshold,
+    get_masks_from_roi,
+    get_simulated_probe_for_masks,
+)
 from pyxalign.io.utils import load_list_of_arrays
 from pyxalign.io.save import save_generic_data_structure_to_h5
 
@@ -68,6 +72,7 @@ from pyxalign.data_structures.positions import ProbePositions
 from pyxalign.api.types import ArrayType, r_type
 
 __all__ = ["Projections", "PhaseProjections", "ComplexProjections"]
+
 
 class TransformTracker:
     def __init__(
@@ -185,7 +190,9 @@ class Projections:
         n_lateral_pixels = self.data.shape[2]
         if self.options.volume_width.use_custom_width:
             n_lateral_pixels *= self.options.volume_width.multiplier
-        n_pix = np.array([n_lateral_pixels, n_lateral_pixels, sample_thickness / self.pixel_size])
+        n_pix = np.array(
+            [n_lateral_pixels, n_lateral_pixels, sample_thickness / self.pixel_size]
+        )
         # n_pix = round_to_divisor(n_pix, "ceil", divisor)
         return np.ceil(n_pix).astype(int)
 
@@ -315,7 +322,9 @@ class Projections:
                         shape=(self.n_projections, *self.size[::-1]),
                         dtype=self.data.dtype,
                     )
-                    self.data = Rotator(options).run(self.data, pinned_results=pinned_array)
+                    self.data = Rotator(options).run(
+                        self.data, pinned_results=pinned_array
+                    )
                 else:
                     self.data = Rotator(options).run(self.data)
                 # Do the same procedure for the masks
@@ -325,7 +334,9 @@ class Projections:
                             shape=(self.n_projections, *self.size),
                             dtype=self.masks.dtype,
                         )
-                        self.masks = Rotator(options).run(self.masks, pinned_results=pinned_array)
+                        self.masks = Rotator(options).run(
+                            self.masks, pinned_results=pinned_array
+                        )
                     else:
                         self.masks = Rotator(options).run(self.masks)
 
@@ -349,7 +360,9 @@ class Projections:
             # To do: insert code for updating center of rotation
 
     @timer()
-    def shear_projections(self, options: ShearOptions, apply_to_center_of_rotation: bool = True):
+    def shear_projections(
+        self, options: ShearOptions, apply_to_center_of_rotation: bool = True
+    ):
         if options.enabled and options.angle != 0:
             Shearer(options).run(self.data, pinned_results=self.data)
             if self.masks is not None:
@@ -375,7 +388,9 @@ class Projections:
         shift = np.round(np.array(self.size) / 2 - self.center_of_rotation)
         self.center_of_rotation = self.center_of_rotation + shift
         shift = shift[::-1][None].repeat(self.n_projections, 0)
-        shifter_function = Shifter(ShiftOptions(type=enums.ShiftType.CIRC, enabled=True))
+        shifter_function = Shifter(
+            ShiftOptions(type=enums.ShiftType.CIRC, enabled=True)
+        )
         self.data = shifter_function.run(self.data, shift)
         if self.masks is not None:
             self.masks = shifter_function.run(self.masks, shift)
@@ -422,11 +437,17 @@ class Projections:
         # self.dropped_scan_numbers += self.scan_numbers[remove_idx].tolist()
         remove_scans = [scan for scan in remove_scans if scan in self.scan_numbers]
         if not hasattr(remove_scans, "__len__"):
-            raise TypeError("Input argument `remove_scans` should be a list of integers")
+            raise TypeError(
+                "Input argument `remove_scans` should be a list of integers"
+            )
         if isinstance(remove_scans, np.ndarray):
             remove_scans = list(remove_scans)
-        keep_idx = [i for i, scan in enumerate(self.scan_numbers) if scan not in remove_scans]
-        remove_idx = [i for i, scan in enumerate(self.scan_numbers) if scan in remove_scans]
+        keep_idx = [
+            i for i, scan in enumerate(self.scan_numbers) if scan not in remove_scans
+        ]
+        remove_idx = [
+            i for i, scan in enumerate(self.scan_numbers) if scan in remove_scans
+        ]
         # update list of dropped scans
         # self.dropped_scan_numbers += [scan for scan in remove_scans if scan in self.scan_numbers]
         self.dropped_scan_numbers += [self.scan_numbers[i] for i in remove_idx]
@@ -458,10 +479,11 @@ class Projections:
         # Update the past shifts and staged shift
         self.shift_manager.staged_shift = self.shift_manager.staged_shift[keep_idx]
         for i, shift in enumerate(self.shift_manager.past_shifts):
-            self.shift_manager.past_shifts[i] = self.shift_manager.past_shifts[i][keep_idx]
+            self.shift_manager.past_shifts[i] = self.shift_manager.past_shifts[i][
+                keep_idx
+            ]
 
         print(f"Removed scans: {[int(x) for x in remove_scans]}")
-
 
     def _post_init(self):
         "For running children specific code after instantiation"
@@ -499,14 +521,20 @@ class Projections:
         if downsample_options.enabled:
             mask_options = copy.deepcopy(mask_options)
             scale = downsample_options.scale
-            mask_options.binary_close_coefficient = mask_options.binary_close_coefficient / scale
-            mask_options.binary_erode_coefficient = mask_options.binary_erode_coefficient / scale
+            mask_options.binary_close_coefficient = (
+                mask_options.binary_close_coefficient / scale
+            )
+            mask_options.binary_erode_coefficient = (
+                mask_options.binary_erode_coefficient / scale
+            )
             mask_options.fill = mask_options.fill / scale
         else:
             mask_options = mask_options
         # Calculate masks
         self.masks = estimate_reliability_region_mask(
-            images=Downsampler(self.options.masks_from_morphology.downsample).run(self.data),
+            images=Downsampler(self.options.masks_from_morphology.downsample).run(
+                self.data
+            ),
             options=mask_options,
             enable_plotting=enable_plotting,
         )
@@ -519,7 +547,10 @@ class Projections:
         # return Upsampler(upsample_options).run(self.masks)
 
     def _blur_masks(
-        self, kernel_sigma: int, use_gpu: bool = False, masks: Optional[np.ndarray] = None
+        self,
+        kernel_sigma: int,
+        use_gpu: bool = False,
+        masks: Optional[np.ndarray] = None,
     ):
         if masks is None:
             masks = self.masks
@@ -548,8 +579,15 @@ class Projections:
             image = process_func(self.data[proj_idx])
 
         plt.imshow(image, cmap="bone")
-        plt.plot(center_of_rotation[1], center_of_rotation[0], ".m", label="Center of Rotation")
-        plt.title(f"Center of Rotation\n(x={center_of_rotation[1]}, y={center_of_rotation[0]})")
+        plt.plot(
+            center_of_rotation[1],
+            center_of_rotation[0],
+            ".m",
+            label="Center of Rotation",
+        )
+        plt.title(
+            f"Center of Rotation\n(x={center_of_rotation[1]}, y={center_of_rotation[0]})"
+        )
         plt.legend()
         if show_plot:
             plt.show()
@@ -570,7 +608,9 @@ class Projections:
             np.issubdtype(self.data.dtype, np.complexfloating)
             and options.process_func is enums.ProcessFunc.NONE
         ):
-            print("process_func not provided, defaulting to plotting angle of complex projections")
+            print(
+                "process_func not provided, defaulting to plotting angle of complex projections"
+            )
             options.process_func = enums.ProcessFunc.ANGLE
 
         if options.index is None:
@@ -660,13 +700,6 @@ class Projections:
             print(shift_type)
             self.plot_shift(shift_type, plot_kwargs=plot_kwargs)
 
-    # def replace_probe_with_gaussian(
-    #     self, amplitude: float, sigma: float, shape: Optional[float] = None
-    # ):
-    #     if shape is None:
-    #         shape = self.probe.shape
-    #     self.probe = symmetric_gaussian_2d(shape, amplitude, sigma)
-
     def _save_projections_object(
         self,
         save_path: Optional[str] = None,
@@ -675,7 +708,9 @@ class Projections:
         if save_path is None and h5_obj is None:
             raise ValueError("Error: you must pass in either file_path or h5_obj.")
         elif save_path is not None and h5_obj is not None:
-            raise ValueError("Error: you must pass in only file_path OR h5_obj, not both.")
+            raise ValueError(
+                "Error: you must pass in only file_path OR h5_obj, not both."
+            )
         elif save_path is not None:
             h5_obj = h5py.File(save_path, "w")
 
@@ -751,11 +786,15 @@ class Projections:
             reference_tile_num,
             current_tile_num,
         )
-        remove_scans = [scan for scan in self.scan_numbers if scan not in shared_scan_numbers]
+        remove_scans = [
+            scan for scan in self.scan_numbers if scan not in shared_scan_numbers
+        ]
         if drop_unshared_scans:
             # remove scans that were not in reference data
             keep_idx = [
-                i for i, scan in enumerate(self.scan_numbers) if scan in shared_scan_numbers
+                i
+                for i, scan in enumerate(self.scan_numbers)
+                if scan in shared_scan_numbers
             ]
             new_shift = new_shift[keep_idx]
             self.drop_projections(remove_scans)
@@ -772,12 +811,14 @@ class Projections:
         self.shift_manager.stage_shift(new_shift, staged_function_type)
         # Update center of rotation
         if update_center_of_rotation:
-            self.center_of_rotation[:] = get_center_of_rotation_from_different_resolution_alignment(
-                reference_shape=reference_shape[1:],
-                reference_center_of_rotation=reference_center_of_rotation,
-                current_shape=self.data.shape[1:],
-                reference_pixel_size=reference_pixel_size,
-                current_pixel_size=self.pixel_size,
+            self.center_of_rotation[:] = (
+                get_center_of_rotation_from_different_resolution_alignment(
+                    reference_shape=reference_shape[1:],
+                    reference_center_of_rotation=reference_center_of_rotation,
+                    current_shape=self.data.shape[1:],
+                    reference_pixel_size=reference_pixel_size,
+                    current_pixel_size=self.pixel_size,
+                )
             )
 
         return new_shift
@@ -785,14 +826,15 @@ class Projections:
 
 class ComplexProjections(Projections):
     def unwrap_phase(self, pinned_results: Optional[np.ndarray] = None) -> ArrayType:
-
         ramp_options = self.options.phase_unwrap.remove_ramp_using_air_gap
         if (
             ramp_options.enabled
             and ramp_options.air_region.horizontal_range is None
             and ramp_options.air_region.vertical_range is None
         ):
-            raise ValueError("Air gap ramp removal is enabled, but the air_region ROI was not specified.")
+            raise ValueError(
+                "Air gap ramp removal is enabled, but the air_region ROI was not specified."
+            )
 
         # this method always needs a mask
         bool_1 = (
@@ -801,13 +843,15 @@ class ComplexProjections(Projections):
         )
         # this method does not need a mask
         bool_2 = (
-            self.options.phase_unwrap.method == enums.PhaseUnwrapMethods.GRADIENT_INTEGRATION
+            self.options.phase_unwrap.method
+            == enums.PhaseUnwrapMethods.GRADIENT_INTEGRATION
         ) and (self.options.phase_unwrap.gradient_integration.use_masks)
         use_masks = bool_1 or bool_2
         if use_masks and self.masks is None:
             raise ValueError(
                 "Phase unwrapping requires masks for the selected phase_unwrap settings, but masks do not exist"
             )
+
         # the configuration of the device_handling_wrapper depends on the number
         # of chunked arguments passed to it, so it depends on whether or not
         # we are passing in masks
@@ -823,7 +867,9 @@ class ComplexProjections(Projections):
             display_progress_bar=True,
         )
         if use_masks:
-            return unwrap_phase_wrapped(self.data, self.masks, self.options.phase_unwrap)
+            return unwrap_phase_wrapped(
+                self.data, self.masks, self.options.phase_unwrap
+            )
         else:
             return unwrap_phase_wrapped(self.data, None, self.options.phase_unwrap)
 
@@ -849,7 +895,9 @@ class PhaseProjections(Projections):
     def estimate_center_of_rotation(self) -> CenterOfRotationEstimateResults:
         clear_timer_globals()
         estimate_center_options = self.return_auto_centered_search_options()
-        return estimate_center_of_rotation(self, self.angles, self.masks, estimate_center_options)
+        return estimate_center_of_rotation(
+            self, self.angles, self.masks, estimate_center_options
+        )
 
     def plot_coordinate_search_points(
         self,
@@ -875,9 +923,13 @@ class PhaseProjections(Projections):
     def return_auto_centered_search_options(self) -> EstimateCenterOptions:
         modified_options = copy.deepcopy(self.options.estimate_center)
         if self.options.estimate_center.horizontal_coordinate.center_estimate is None:
-            modified_options.horizontal_coordinate.center_estimate = self.center_of_rotation[1]
+            modified_options.horizontal_coordinate.center_estimate = (
+                self.center_of_rotation[1]
+            )
         if self.options.estimate_center.vertical_coordinate.center_estimate is None:
-            modified_options.vertical_coordinate.center_estimate = self.center_of_rotation[0]
+            modified_options.vertical_coordinate.center_estimate = (
+                self.center_of_rotation[0]
+            )
         return modified_options
 
 
@@ -970,7 +1022,9 @@ class ShiftManager:
         else:
             print("There is no shift to apply!")
 
-    def undo_last_shift(self, images: np.ndarray, masks: np.ndarray, device_options: DeviceOptions):
+    def undo_last_shift(
+        self, images: np.ndarray, masks: np.ndarray, device_options: DeviceOptions
+    ):
         if len(self.past_shifts) == 0:
             print("There is no shift to undo!")
             return
@@ -1022,5 +1076,3 @@ def get_kwargs_for_copying_to_new_projections_object(
         kwargs["projections"] = projections.data * 1
 
     return kwargs
-
-

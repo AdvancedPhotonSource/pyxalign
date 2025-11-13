@@ -24,7 +24,12 @@ from PyQt5.QtWidgets import (
     QSpacerItem,
 )
 
-from pyxalign.api.options.options import AirGapRampRemovalOptions, GradientIntegrationUnwrapOptions, IterativeResidualUnwrapOptions, PhaseUnwrapOptions
+from pyxalign.api.options.options import (
+    AirGapRampRemovalOptions,
+    GradientIntegrationUnwrapOptions,
+    IterativeResidualUnwrapOptions,
+    PhaseUnwrapOptions,
+)
 from pyxalign.api.options_utils import get_all_attribute_names
 from pyxalign.data_structures.task import LaminographyAlignmentTask
 from pyxalign.interactions.custom import action_button_style_sheet
@@ -49,11 +54,9 @@ class PhaseUnwrapWidget(QWidget):
         Emitted when phase unwrapping is completed, containing the unwrapped phase data.
     """
 
-    phase_unwrapped = pyqtSignal()#np.ndarray)
+    phase_unwrapped = pyqtSignal()  # np.ndarray)
 
-    def __init__(
-        self, task: LaminographyAlignmentTask, parent: Optional[QWidget] = None
-    ):
+    def __init__(self, task: LaminographyAlignmentTask, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.task = task
@@ -86,7 +89,7 @@ class PhaseUnwrapWidget(QWidget):
         )
         self.options_editor = BasicOptionsEditor(
             self.task.complex_projections.options.phase_unwrap,
-            basic_options_list=basic_options_list, 
+            basic_options_list=basic_options_list,
             enable_advanced_tab=True,
             skip_fields=[
                 "remove_ramp_using_air_gap.air_region",
@@ -208,7 +211,6 @@ class PhaseUnwrapWidget(QWidget):
             spacer = QSpacerItem(500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
             layout = msg.layout()
             layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
-            # msg.setStyleSheet("QLabel{min-width:500 px; font-size: 24px;} QPushButton{ width:250px; font-size: 18px; }");
             msg.exec_()
         finally:
             # Re-enable button and reset text

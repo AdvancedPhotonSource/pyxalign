@@ -51,7 +51,11 @@ def unwrap_phase(
     elif options.method == PhaseUnwrapMethods.GRADIENT_INTEGRATION:
         unwrapped_phase = xp.zeros(shape=images.shape, dtype=r_type)
         for i in range(len(images)):
-            if options.gradient_integration.use_masks: # this should be default I think.
+            # if options.gradient_integration.use_masks: # this should be default I think.
+            #     weight_map = weights[i]
+            # else:
+            #     weight_map = None
+            if weights is not None:
                 weight_map = weights[i]
             else:
                 weight_map = None
@@ -61,15 +65,15 @@ def unwrap_phase(
                 image_integration_method=options.gradient_integration.integration_method,
                 fourier_shift_step=options.gradient_integration.fourier_shift_step,
                 weight_map=weight_map,
-                deramp_polyfit_order=options.gradient_integration.deramp_polyfit_order,
+                # deramp_polyfit_order=options.gradient_integration.deramp_polyfit_order,
             )
 
     # remove phase ramp
     if options.remove_ramp_using_air_gap.enabled:
         unwrapped_phase = remove_phase_ramp(
             unwrapped_phase,
-            weights,
             air_gap_roi=options.remove_ramp_using_air_gap.air_region,
+            weights=weights,
             polyfit_order=options.remove_ramp_using_air_gap.polyfit_order,
         )
     return unwrapped_phase
@@ -159,7 +163,6 @@ def phase_unwrap_2D(images: ArrayType, weights: ArrayType, padding: int = 64):
     return phase[:, start_idx_1:stop_idx_1, start_idx_2:stop_idx_2]
 
 
-
 def get_images_int_2D(dX: ArrayType, dY: ArrayType):
     """Integrate 2D phase gradients using Fourier domain integration.
 
@@ -185,13 +188,9 @@ def get_images_int_2D(dX: ArrayType, dY: ArrayType):
     n_z, n_y, n_x = dX.shape
 
     fD = scipy_module.fft.fft2(dX + 1j * dY, axes=(1, 2))
-    x_grid = scipy_module.fft.ifftshift(
-        xp.arange(-np.fix(n_x / 2), np.ceil(n_x / 2), dtype=r_type)
-    )
+    x_grid = scipy_module.fft.ifftshift(xp.arange(-np.fix(n_x / 2), np.ceil(n_x / 2), dtype=r_type))
     x_grid /= n_x
-    y_grid = scipy_module.fft.ifftshift(
-        xp.arange(-np.fix(n_y / 2), np.ceil(n_y / 2), dtype=r_type)
-    )
+    y_grid = scipy_module.fft.ifftshift(xp.arange(-np.fix(n_y / 2), np.ceil(n_y / 2), dtype=r_type))
     y_grid /= n_y
 
     X = xp.exp((2j * xp.pi) * x_grid + y_grid[:, None])
@@ -276,9 +275,7 @@ def unwrap_phase_gradient_integration(
             padding_mode = "reflect"
         else:
             padding_mode = "replicate"
-        image = xp.pad(
-            image, (padding[1], padding[1], padding[0], padding[0]), mode=padding_mode
-        )
+        image = xp.pad(image, (padding[1], padding[1], padding[0], padding[0]), mode=padding_mode)
         image = vignette(image, margin=10, sigma=2.5)
 
     gy, gx = get_phase_gradient(
@@ -371,9 +368,7 @@ def remove_polynomial_background(
     a_mat = xp.stack(y_all_orders + x_all_orders + [const_basis], axis=1)
     b_vec = images[flat_region_mask].reshape(-1, 1)
     x_vec = xp.linalg.solve(a_mat, b_vec)
-    a_mat_full = xp.stack(
-        y_full_all_orders + x_full_all_orders + [const_basis_full], axis=1
-    )
+    a_mat_full = xp.stack(y_full_all_orders + x_full_all_orders + [const_basis_full], axis=1)
     bg = a_mat_full @ x_vec
     bg = bg.reshape(images.shape)
     return images - bg
@@ -453,9 +448,7 @@ def vignette(
             window_func = scipy_module.signal.windows.general_hamming(
                 images.shape[i_dim], periodic=True, alpha=0.5, beta=0.5
             )
-            images = images * window_func.reshape(
-                [-1] + [1] * (images.ndim - i_dim - 1)
-            )
+            images = images * window_func.reshape([-1] + [1] * (images.ndim - i_dim - 1))
         else:
             raise ValueError(f"Unknown method: {method}")
 
@@ -512,9 +505,7 @@ def integrate_image_2d_fourier(grad_y: ArrayType, grad_x: ArrayType) -> ArrayTyp
 
 
 @timer()
-def integrate_image_2d(
-    grad_y: ArrayType, grad_x: ArrayType, bc_center: float = 0
-) -> ArrayType:
+def integrate_image_2d(grad_y: ArrayType, grad_x: ArrayType, bc_center: float = 0) -> ArrayType:
     """Integrate an image with the gradient in y and x directions.
 
     Args:
@@ -529,9 +520,7 @@ def integrate_image_2d(
 
     left_boundary = xp.cumsum(grad_y[:, 0], axis=0)
     int_img = xp.cumsum(grad_x, axis=1) + left_boundary[:, None]
-    int_img = (
-        int_img + bc_center - int_img[int_img.shape[0] // 2, int_img.shape[1] // 2]
-    )
+    int_img = int_img + bc_center - int_img[int_img.shape[0] // 2, int_img.shape[1] // 2]
     return int_img
 
 
@@ -583,9 +572,7 @@ def integrate_image_2d_deconvolution(
     # f_grad_x = pmath.fft2_precise(grad_x)
     f_grad_y = scipy_module.fft.fft2(grad_y)
     f_grad_x = scipy_module.fft.fft2(grad_x)
-    images = (f_grad_y * tf_y + f_grad_x * tf_x) / (
-        xp.abs(tf_y) ** 2 + xp.abs(tf_x) ** 2 + 1e-5
-    )
+    images = (f_grad_y * tf_y + f_grad_x * tf_x) / (xp.abs(tf_y) ** 2 + xp.abs(tf_x) ** 2 + 1e-5)
     # images = -pmath.ifft2_precise(images)
     images = -scipy_module.fft.ifft2(images)
     images = images + bc_center - images[images.shape[0] // 2, images.shape[1] // 2]
@@ -670,9 +657,7 @@ def convolve1d(
 
 @timer()
 def remove_phase_ramp_using_empty_region(
-    phase: ArrayType, 
-    empty_region_mask: np.ndarray, 
-    order: int = 1
+    phase: ArrayType, empty_region_mask: np.ndarray, order: int = 1
 ):
     """Remove polynomial phase trends from a 2D phase array using masked region estimation.
 
@@ -681,8 +666,8 @@ def remove_phase_ramp_using_empty_region(
 
     Args:
         phase: A 2D array representing the phase (in radians).
-        empty_region_mask: A 2D boolean array (same shape as `phase`), 
-            where True indicates the region to use for phase trend 
+        empty_region_mask: A 2D boolean array (same shape as `phase`),
+            where True indicates the region to use for phase trend
             estimation.
         order: Polynomial order for the fit (default=1 for linear/planar fit).
             - order=1: linear ramp (a*x + b*y + c)
@@ -698,7 +683,7 @@ def remove_phase_ramp_using_empty_region(
     """
     if phase.shape != empty_region_mask.shape:
         raise ValueError("Phase and mask arrays must have the same shape.")
-    
+
     if order < 1:
         raise ValueError("Polynomial order must be at least 1.")
 
@@ -727,9 +712,9 @@ def remove_phase_ramp_using_empty_region(
         for x_degree in range(total_degree + 1):
             y_degree = total_degree - x_degree
             # Add term: x^x_degree * y^y_degree
-            term = (x_masked ** x_degree) * (y_masked ** y_degree)
+            term = (x_masked**x_degree) * (y_masked**y_degree)
             A_columns.append(term)
-    
+
     A = xp.column_stack(A_columns)
     b = phase_masked
     inline_timer.end()
@@ -760,7 +745,7 @@ def remove_phase_ramp_using_empty_region(
         for x_degree in range(total_degree + 1):
             y_degree = total_degree - x_degree
             # Add term: coefficient * x^x_degree * y^y_degree
-            phase_trend += params_opt[param_idx] * (x ** x_degree) * (y ** y_degree)
+            phase_trend += params_opt[param_idx] * (x**x_degree) * (y**y_degree)
             param_idx += 1
     inline_timer.end()
 
@@ -819,13 +804,10 @@ def get_phase_gradient(
             # non-zero values that dangles around 0. This can cause the phase
             # of the shifted image to dangle between pi and -pi. In that case, use
             # `finite_diff_method="nearest" instead`, or use `step=1`.
-            complex_prod = (
-                image_shift_fft(image, sy1) * image_shift_fft(image, sy2).conj()
-            )
+            complex_prod = image_shift_fft(image, sy1) * image_shift_fft(image, sy2).conj()
         elif image_grad_method == ImageGradientMethods.NEAREST:
             complex_prod = (
-                image
-                * xp.concatenate([image[:, :1, :], image[:, :-1, :]], axis=1).conj()
+                image * xp.concatenate([image[:, :1, :], image[:, :-1, :]], axis=1).conj()
             )
         else:
             raise ValueError(f"Unknown finite-difference method: {image_grad_method}")
@@ -839,13 +821,10 @@ def get_phase_gradient(
         sx1 = xp.array([[0, -fourier_shift_step]]).repeat(image.shape[0], 1)
         sx2 = xp.array([[0, fourier_shift_step]]).repeat(image.shape[0], 1)
         if image_grad_method == ImageGradientMethods.FOURIER_SHIFT:
-            complex_prod = (
-                image_shift_fft(image, sx1) * image_shift_fft(image, sx2).conj()
-            )
+            complex_prod = image_shift_fft(image, sx1) * image_shift_fft(image, sx2).conj()
         elif image_grad_method == ImageGradientMethods.NEAREST:
             complex_prod = (
-                image
-                * xp.concatenate([image[:, :, :1], image[:, :, :-1]], axis=2).conj()
+                image * xp.concatenate([image[:, :, :1], image[:, :, :-1]], axis=2).conj()
             )
         complex_prod = xp.where(
             xp.abs(complex_prod) < xp.abs(complex_prod).max() * 1e-6, 0, complex_prod
@@ -885,9 +864,7 @@ def torch_pad_to_numpy_pad(input, pad_lengths, mode="replicate"):
     # NumPy: ((dim0_before, dim0_after), (dim1_before, dim1_after), ...)
 
     # Group into pairs: [(left, right), (top, bottom), (front, back), ...]
-    pad_pairs = [
-        (pad_lengths[i], pad_lengths[i + 1]) for i in range(0, len(pad_lengths), 2)
-    ]
+    pad_pairs = [(pad_lengths[i], pad_lengths[i + 1]) for i in range(0, len(pad_lengths), 2)]
 
     # Reverse to get forward dimension order
     pad_pairs = pad_pairs[::-1]
@@ -901,7 +878,7 @@ def torch_pad_to_numpy_pad(input, pad_lengths, mode="replicate"):
     return np.pad(input, pad_width=pad_width, mode=numpy_mode)
 
 
-#### shared functions #### 
+#### shared functions ####
 def get_phase_gradient_fourier(images: ArrayType):
     """Compute phase gradients using Fourier differentiation.
 
@@ -951,16 +928,12 @@ def get_image_grad(images: ArrayType):
 
     n_z, n_y, n_x = images.shape
 
-    X = scipy_module.fft.ifftshift(
-        xp.arange(-np.fix(n_x / 2), np.ceil(n_x / 2), dtype=c_type)
-    )
+    X = scipy_module.fft.ifftshift(xp.arange(-np.fix(n_x / 2), np.ceil(n_x / 2), dtype=c_type))
     X *= 2j * xp.pi / n_x
     dX = scipy_module.fft.fft(images, axis=2) * X
     dX = scipy_module.fft.ifft(dX, axis=2)
 
-    Y = scipy_module.fft.ifftshift(
-        xp.arange(-np.fix(n_y / 2), np.ceil(n_y / 2), dtype=c_type)
-    )
+    Y = scipy_module.fft.ifftshift(xp.arange(-np.fix(n_y / 2), np.ceil(n_y / 2), dtype=c_type))
     Y *= 2j * xp.pi / n_y
     dY = scipy_module.fft.fft(images, axis=1) * Y[:, None]
     dY = scipy_module.fft.ifft(dY, axis=1)
@@ -970,16 +943,23 @@ def get_image_grad(images: ArrayType):
 
 @timer()
 def remove_phase_ramp(
-    sinogram: ArrayType, weights: ArrayType, air_gap_roi: CropOptions, polyfit_order: int = 1
+    sinogram: ArrayType,
+    air_gap_roi: CropOptions,
+    weights: Optional[ArrayType] = None,
+    polyfit_order: int = 1,
 ) -> ArrayType:
     # the air_region mask manipulation is what is taking the longest here
     air_region_mask = get_masks_from_roi(ROIOptions(rectangle=air_gap_roi), sinogram.shape)
-    air_region_mask *= weights.get()
+    if weights is not None:
+        if cp.get_array_module(weights) == cp:
+            air_region_mask *= weights.get()
+        else:
+            air_region_mask *= weights
     for i in range(len(sinogram)):
-        sinogram[i] = (
-            remove_phase_ramp_using_empty_region(
-                sinogram[i], air_region_mask[i].astype(bool), polyfit_order
-            )
-            * weights[i]
+        sinogram[i] = remove_phase_ramp_using_empty_region(
+            sinogram[i], air_region_mask[i].astype(bool), polyfit_order
         )
+        if weights is not None:
+            sinogram[i] *= weights[i]
+
     return sinogram
