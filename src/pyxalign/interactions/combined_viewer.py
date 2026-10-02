@@ -130,7 +130,8 @@ class CombinedAlignmentWidget(SidebarNavigator):
             projections_for_viewer = self.task.phase_projections
         elif has_phase and has_complex:
             # Both available - default to phase for viewer, None for CC (will auto-detect)
-            projection_type_for_cc = None
+            # projection_type_for_cc = None
+            projection_type_for_cc = enums.ProjectionType.PHASE
             projections_for_viewer = self.task.phase_projections
         else:
             # Neither available
@@ -185,17 +186,11 @@ class CombinedAlignmentWidget(SidebarNavigator):
 
         # Create CrossCorrelationMasterWidget with the full task (if requested)
         if self.include_cross_correlation:
-            if projection_type_for_cc is not None:
-                self.cc_widget = CrossCorrelationMasterWidget(
-                    task=self.task,
-                    projection_type=projection_type_for_cc,
-                    projection_viewer=projection_viewer_for_pma,
-                )
-            else:
-                self.cc_widget = CrossCorrelationMasterWidget(
-                    task=self.task,
-                    projection_viewer=projection_viewer_for_pma,
-                )
+            self.cc_widget = CrossCorrelationMasterWidget(
+                task=self.task,
+                projection_type=projection_type_for_cc,
+                projection_viewer=projection_viewer_for_pma,
+            )
 
             # Connect shift operations in ProjectionViewer to clear CC results
             if hasattr(self.projection_viewer, 'all_shifts_viewer') and self.projection_viewer.all_shifts_viewer is not None:
@@ -268,7 +263,7 @@ class CombinedAlignmentWidget(SidebarNavigator):
 
 
 @switch_to_matplotlib_qt_backend
-def launch_combined_alignment_widget(
+def launch_projection_and_alignment_viewer(
     task: "t.LaminographyAlignmentTask",
     updated_settings_for_pma_widget: Optional[list[dict]] = None,
     include_projection_matching: bool = True,
@@ -297,7 +292,7 @@ def launch_combined_alignment_widget(
     Example:
         Launch the combined alignment GUI::
 
-            gui = pyxalign.gui.launch_combined_alignment_widget(task)
+            gui = pyxalign.gui.launch_projection_and_alignment_viewer(task)
     """
     app = QApplication.instance() or QApplication([])
     gui = CombinedAlignmentWidget(
@@ -325,7 +320,7 @@ def main():
     task = LaminographyAlignmentTask()
 
     # Create and show the widget
-    widget = launch_combined_alignment_widget(task)
+    widget = launch_projection_and_alignment_viewer(task)
 
     sys.exit(app.exec_())
 

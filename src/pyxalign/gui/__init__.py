@@ -1,5 +1,10 @@
-from pyxalign.interactions.combined_viewer import launch_combined_alignment_widget
+from pyxalign.interactions.combined_viewer import launch_projection_and_alignment_viewer
+from pyxalign.interactions.missing_cone_window import launch_fill_missing_cone_gui
+from pyxalign.interactions.histogram_viewer import launch_volume_histogram_viewer
 from ..interactions.io.loader import launch_data_loader
+from ..interactions.autorunner.data_load_and_init_widget import (
+    launch_data_loader_and_initialization,
+)
 from ..interactions.viewers.xrf import (
     launch_xrf_projections_viewer,
     launch_xrf_volume_viewer,
@@ -28,9 +33,12 @@ __all__ = [
     "launch_cross_correlation_gui",
     "launch_mask_builder",
     "launch_data_loader",
+    "launch_data_loader_and_initialization",
     "launch_mask_selection_from_roi",
     "launch_crop_window_selection",
     "launch_phase_unwrap_widget",
-    "launch_combined_alignment_widget",
+    "launch_projection_and_alignment_viewer",
     "launch_pma_sequence_viewer",
+    "launch_fill_missing_cone_gui",
+    "launch_volume_histogram_viewer",
 ]

@@ -38,7 +38,7 @@ def save_state_file_wrapper(func):
 
     @wraps(func)
     def wrapper(self: Autorunner, *args, **kwargs):
-        if self.config.state.use_state_file_settings and hasattr(self, "task"):
+        if self.config.state.use_state_file_settings and self.task is not None:
             # load existing state file settings into task
             _update_pyxalign_object_settings(self.task, self.config)
         result = func(self, *args, **kwargs)
@@ -67,7 +67,6 @@ def handle_checkpoint(checkpoint: str):
             if not self.config.checkpoint.load_from_checkpoint:
                 result = func(self, *args, **kwargs)
             else:
-
                 # check if past the current checkpoint or not
                 current_checkpoint_val = get_checkpoint_order_value(checkpoint)
                 loaded_checkpoint_val = get_checkpoint_order_value(
@@ -82,11 +81,18 @@ def handle_checkpoint(checkpoint: str):
                         "Loading pyxalign task...", block_all_windows=True
                     )(load_task)
                     if self.config.checkpoint.load_from_custom_task:
-                        self.task = load_task_wrapped(self.config.checkpoint.custom_task_path)
+                        self.task = load_task_wrapped(
+                            self.config.checkpoint.custom_task_path,
+                            load_pma_sequence_volumes=self.config.load_pma_sequence_volumes,
+                            pin_memory=self.config.checkpoint.pin_memory_on_load,
+                        )
                     else:
-                        self.task = load_task_wrapped(checkpoint_path)
+                        self.task = load_task_wrapped(
+                            checkpoint_path,
+                            load_pma_sequence_volumes=self.config.load_pma_sequence_volumes,
+                            pin_memory=self.config.checkpoint.pin_memory_on_load,
+                        )
                     # sync loaded task with settings file
-                    # # could make optional 'sync with settings' when using checkpoint?
                     if self.config.state.use_state_file_settings:
                         _update_pyxalign_object_settings(self.task, self.config)
                     return
@@ -147,6 +153,8 @@ def _update_all_config_parameters(task: LaminographyAlignmentTask, config: Autor
         projections.center_of_rotation[1] - unshifted_center_of_rotation[1]
     )
     config.reconstruct.reconstruct = projections.options.reconstruct
+    config.initialize.laminography_angle = projections.options.experiment.laminography_angle
+    print("Updated autorunner config using task object settings")
 
 
 def _update_pyxalign_object_settings(task: LaminographyAlignmentTask, config: AutorunnerConfig):
@@ -176,17 +184,13 @@ def _update_pyxalign_object_settings(task: LaminographyAlignmentTask, config: Au
         config.reconstruct.center_horizontal_offset + unshifted_center_of_rotation[1]
     )
     projections.options.reconstruct = config.reconstruct.reconstruct
-
-    print("Updated pyxalign object settings")
+    projections.options.experiment.laminography_angle = config.initialize.laminography_angle
+    print("Updated task object settings using autorunner config")
 
 
 def _get_high_level_config_options() -> list[str]:
     high_level_config_options = [
-        "state.state_folder",
         "state.use_state_file_settings",
-        "state.update_state_file",
-        # "state.state_memory_enabled",
-        # "state.use_state_file",
         "state.update_state_file",
         # "interactivity",
         # "cross_correlation_enabled",

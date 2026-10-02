@@ -6,6 +6,11 @@ from . import gui
 from . import image_utils
 from . import utils
 
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "unknown"
+
 __all__ = [
     "data_structures",
     "io",
@@ -14,4 +19,5 @@ __all__ = [
     "gui",
     "image_utils",
     "utils",
+    "__version__",
 ]

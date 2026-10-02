@@ -368,12 +368,16 @@ class PMASequenceViewer(QWidget):
         task: Optional["LaminographyAlignmentTask"] = None,
         projection_viewer: Optional[QWidget] = None,
         on_shift_staged: Optional[Callable[[], None]] = None,
+        on_initialize_with_snapshot: Optional[Callable[[int], None]] = None,
     ):
         super().__init__(parent=parent)
         self.setWindowTitle("PMA Sequence Viewer")
         self.sequence = sequence
         self.task = task
         self.projection_viewer = projection_viewer
+        # Callback invoked when the user wants to use a snapshot as the initial
+        # shift for the next alignment run. Called with the snapshot index.
+        self.on_initialize_with_snapshot = on_initialize_with_snapshot
         # Callback invoked after a snapshot's shift is successfully staged
         # and applied — used by the PMA runner to clear stale alignment
         # results.
@@ -387,6 +391,10 @@ class PMASequenceViewer(QWidget):
         # chain filter is applied). Empty means "show everything".
         self._visible_indices: list[int] = []
         self._chain_filter_terminal: int = _ALL_SNAPSHOTS_KEY
+        # Snapshot whose volume is currently displayed.  Gives access to the
+        # prior scale and crop offsets needed to map the view center when
+        # switching to a new snapshot with different scale/crop settings.
+        self._last_volume_snapshot: Optional[PMASnapshot] = None
 
         self._build_ui()
         self.refresh()
@@ -444,9 +452,31 @@ class PMASequenceViewer(QWidget):
         snapshots_layout.addLayout(chain_row)
         snapshots_layout.addWidget(self.results_table)
 
+        self.initialize_with_snapshot_button = QPushButton(
+            "Initialize next alignment with selected snapshot shift"
+        )
+        self.initialize_with_snapshot_button.setStyleSheet(
+            "QPushButton { background-color: #b3d9ff; font-weight: bold; padding: 6px; }"
+            "QPushButton:disabled { background-color: #e0e0e0; color: #888; }"
+        )
+        self.initialize_with_snapshot_button.clicked.connect(
+            self._on_initialize_with_snapshot_clicked
+        )
+        if self.on_initialize_with_snapshot is None:
+            self.initialize_with_snapshot_button.setEnabled(False)
+            self.initialize_with_snapshot_button.setToolTip(
+                "No alignment runner is wired up to this viewer."
+            )
+        else:
+            self.initialize_with_snapshot_button.setEnabled(False)
+            self.initialize_with_snapshot_button.setToolTip(
+                "Select a snapshot to enable this button."
+            )
+        snapshots_layout.addWidget(self.initialize_with_snapshot_button)
+
         self.stage_shift_button = QPushButton("Stage && Apply Selected Snapshot Shift")
         self.stage_shift_button.setStyleSheet(
-            "QPushButton { background-color: #b3d9ff; font-weight: bold; padding: 6px; }"
+            "QPushButton { background-color: #d4edda; font-weight: bold; padding: 6px; }"
             "QPushButton:disabled { background-color: #e0e0e0; color: #888; }"
         )
         self.stage_shift_button.clicked.connect(self._on_stage_shift_clicked)
@@ -579,9 +609,18 @@ class PMASequenceViewer(QWidget):
         right_column.addWidget(self.sort_group)
         right_column.addWidget(self.view_group)
 
-        # Top bar with the Help / Tips button anchored to the right.
+        # Top bar with action buttons anchored to the right.
         top_bar = QHBoxLayout()
         top_bar.addStretch()
+        self.delete_volume_button = QPushButton("Delete Volume Array")
+        self.delete_volume_button.setStyleSheet(
+            "QPushButton { background-color: #dc3545; color: white; font-weight: bold; }"
+        )
+        self.delete_volume_button.setToolTip(
+            "Delete the volume array from the currently selected snapshot."
+        )
+        self.delete_volume_button.clicked.connect(self._on_delete_volume)
+        top_bar.addWidget(self.delete_volume_button)
         self.help_button = QPushButton("Help / Tips")
         self.help_button.setStyleSheet(
             "QPushButton { background-color: #868e96; color: white; font-weight: bold; }"
@@ -599,6 +638,32 @@ class PMASequenceViewer(QWidget):
         main_layout.addLayout(body_layout, stretch=1)
 
         self._sync_control_visibility()
+
+    def _on_delete_volume(self) -> None:
+        """Delete the volume array from the currently selected snapshot."""
+        snapshot = self._current_snapshot()
+        if snapshot is None or snapshot.volume is None:
+            QMessageBox.information(
+                self,
+                "No Volume",
+                "The current snapshot has no volume array to delete.",
+            )
+            return
+        reply = QMessageBox.question(
+            self,
+            "Delete Volume Array",
+            "Are you sure you want to delete the volume array from this snapshot? "
+            "This cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        snap_idx = self._row_to_snapshot_index(self._current_row)
+        if snap_idx is None:
+            return
+        self.sequence.snapshots[snap_idx].volume = None
+        self._update_volume_view(self.sequence.snapshots[snap_idx])
 
     def _on_help(self) -> None:
         """Open the Help/Tips dialog (non-modal, single instance)."""
@@ -722,7 +787,7 @@ class PMASequenceViewer(QWidget):
     # ---- stage shift ----------------------------------------------------
 
     def _update_stage_button_state(self, snapshot: Optional[PMASnapshot]) -> None:
-        """Disable the stage button if the snapshot has no usable final shift."""
+        """Disable action buttons when the selected snapshot has no usable final shift."""
         if self.task is None:
             # The no-task disabled state was set in `_build_ui`; nothing to do.
             return
@@ -738,6 +803,26 @@ class PMASequenceViewer(QWidget):
             self.stage_shift_button.setToolTip(
                 "This snapshot has no final_shift (PMA did not complete)."
             )
+
+        if self.on_initialize_with_snapshot is not None:
+            self.initialize_with_snapshot_button.setEnabled(has_final)
+            if has_final:
+                self.initialize_with_snapshot_button.setToolTip(
+                    "Add this snapshot's shift as an available starting point "
+                    "in the 'Initial Shift' dropdown of the Configure & Start tab."
+                )
+            else:
+                self.initialize_with_snapshot_button.setToolTip(
+                    "This snapshot has no final_shift (PMA did not complete)."
+                )
+
+    def _on_initialize_with_snapshot_clicked(self) -> None:
+        if self.on_initialize_with_snapshot is None or self._current_row is None:
+            return
+        snap_idx = self._row_to_snapshot_index(self._current_row)
+        if snap_idx is None:
+            return
+        self.on_initialize_with_snapshot(snap_idx)
 
     def _on_stage_shift_clicked(self) -> None:
         from pyxalign.api import enums
@@ -829,10 +914,12 @@ class PMASequenceViewer(QWidget):
 
     def _sync_control_visibility(self) -> None:
         is_shifts = self.plot_type == PMASequencePlotType.INITIAL_FINAL_SHIFTS
+        is_volume = self.plot_type == PMASequencePlotType.VOLUME
         # Sort axis is only meaningful for the shifts plot. The angles plot
         # is always shown vs. scan number; the volume display has no x axis.
         self.sort_group.setVisible(is_shifts)
         self.view_group.setVisible(is_shifts)
+        self.delete_volume_button.setVisible(is_volume)
 
     # ---- display dispatch -----------------------------------------------
 
@@ -929,7 +1016,24 @@ class PMASequenceViewer(QWidget):
 
     def _update_volume_view(self, snapshot: PMASnapshot) -> None:
         volume = snapshot.volume
+        # Preserve the fractional slice position so switching snapshots keeps
+        # the viewer oriented at the same relative depth in the new volume.
+        current_max = self.array_viewer.slider.maximum()
+        slice_fraction = (
+            self.array_viewer.slider.value() / current_max if current_max > 0 else 0.0
+        )
+        # Capture view state and prior volume metadata before reinitializing.
+        view_box = self.array_viewer.plot_item.getViewBox()
+        x_range, y_range = view_box.viewRange()
+        prior_snapshot = self._last_volume_snapshot
+        prior_vol_shape = (
+            self.array_viewer.array3d.shape
+            if self.array_viewer.array3d is not None
+            else None
+        )
+
         if volume is None or np.asarray(volume).size == 0:
+            self._last_volume_snapshot = None
             empty = np.zeros((1, 1, 1), dtype=np.float32)
             self.array_viewer.reinitialize_all(array3d=empty)
             self.array_viewer.setToolTip(
@@ -937,8 +1041,64 @@ class PMASequenceViewer(QWidget):
                 "Set pma_options.pma_sequence.record_volume = True before running PMA."
             )
             return
+
         self.array_viewer.setToolTip("")
         self.array_viewer.reinitialize_all(array3d=np.asarray(volume))
+        self._last_volume_snapshot = snapshot
+
+        new_max = self.array_viewer.slider.maximum()
+        if new_max > 0:
+            self.array_viewer.slider.setValue(round(slice_fraction * new_max))
+
+        if prior_snapshot is None or prior_vol_shape is None:
+            # First real volume — let auto-range position it.
+            return
+
+        # Map the current view center from the old volume's pixel space to the
+        # new volume's pixel space, preserving apparent physical position.
+        #
+        # For a volume at scale s with crop (horizontal_offset=ox, vertical_offset=oy),
+        # a viewer pixel p maps to a position relative to the full reconstruction
+        # center of:  (p - image_half + crop_offset) * s
+        # Inverting gives the mapping A → B:
+        #   rel = (p_A - W_A/2 + ox_A) * s_A / s_B
+        #   p_B = rel + W_B/2 - ox_B
+        # Half-widths scale by s_A / s_B to preserve physical extent (zoom level).
+        # When crop is disabled, offset is 0; the formula degenerates correctly.
+        slider_axis = self.array_viewer.options.slider_axis
+
+        old_ns = [d for i, d in enumerate(prior_vol_shape) if i != slider_axis]
+        new_ns = [d for i, d in enumerate(self.array_viewer.array3d.shape) if i != slider_axis]
+        # display_frame transposes the slice: non_slider[0] → viewer-y, non_slider[1] → viewer-x
+        old_W, old_H = float(old_ns[1]), float(old_ns[0])
+        new_W, new_H = float(new_ns[1]), float(new_ns[0])
+
+        s_A = float(prior_snapshot.pma_options.downsample.scale)
+        s_B = float(snapshot.pma_options.downsample.scale)
+
+        old_crop = prior_snapshot.pma_options.pma_sequence.volume_crop
+        ox_A = float(old_crop.horizontal_offset) if old_crop.enabled else 0.0
+        oy_A = float(old_crop.vertical_offset) if old_crop.enabled else 0.0
+
+        new_crop = snapshot.pma_options.pma_sequence.volume_crop
+        ox_B = float(new_crop.horizontal_offset) if new_crop.enabled else 0.0
+        oy_B = float(new_crop.vertical_offset) if new_crop.enabled else 0.0
+
+        x_center_A = (x_range[0] + x_range[1]) / 2
+        y_center_A = (y_range[0] + y_range[1]) / 2
+        x_half = (x_range[1] - x_range[0]) / 2 * s_A / s_B
+        y_half = (y_range[1] - y_range[0]) / 2 * s_A / s_B
+
+        rel_x = (x_center_A - old_W / 2 + ox_A) * s_A / s_B
+        rel_y = (y_center_A - old_H / 2 + oy_A) * s_A / s_B
+        x_center_B = rel_x + new_W / 2 - ox_B
+        y_center_B = rel_y + new_H / 2 - oy_B
+
+        view_box.setRange(
+            xRange=(x_center_B - x_half, x_center_B + x_half),
+            yRange=(y_center_B - y_half, y_center_B + y_half),
+            padding=0,
+        )
 
     # ---- changed-params label ------------------------------------------
 

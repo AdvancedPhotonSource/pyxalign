@@ -2,6 +2,7 @@ from typing import Optional, Union
 import numpy as np
 import h5py
 import copy
+import gc
 
 from pyxalign import gpu_utils
 from pyxalign.api.options.alignment import ProjectionMatchingOptions
@@ -98,6 +99,8 @@ class LaminographyAlignmentTask:
         if self.pma_object is not None:
             if hasattr(self.pma_object, "aligned_projections"):
                 self.pma_object.aligned_projections.volume.clear_astra_objects()
+            self.pma_object = None
+            gc.collect()
 
         # reset timers
         clear_timer_globals()
@@ -163,6 +166,13 @@ class LaminographyAlignmentTask:
             alignment_options=self.options.projection_matching,
         )
         print("Projection-matching shift stored in shift_manager")
+
+        # release memory
+        if self.options.projection_matching.low_memory_mode and self.pma_object is not None:
+            if hasattr(self.pma_object, "aligned_projections"):
+                self.pma_object.aligned_projections.volume.clear_astra_objects()
+            self.pma_object = None
+        gc.collect()
 
         return shift
 
@@ -252,6 +262,7 @@ def load_task(
     file_path: str,
     exclude: Optional[str] = None,
     load_pma_sequence_volumes: bool = False,
+    pin_memory: bool = False,
 ) -> LaminographyAlignmentTask:
     print("Loading task from", file_path, "...")
 
@@ -262,7 +273,7 @@ def load_task(
 
     with h5py.File(file_path, "r") as h5_obj:
         # Load projections
-        loaded_projections = load_ptycho_projections(h5_obj, exclude)
+        loaded_projections = load_ptycho_projections(h5_obj, exclude, pin_memory=pin_memory)
 
         # Insert projections into task along with saved task options
         task = LaminographyAlignmentTask(

@@ -57,31 +57,15 @@ class ReconstructionGeometryConfig(BaseOptions):
 
 @dataclasses.dataclass
 class InteractivityConfig(BaseOptions):
+    # currently unused; will be useful later if adding
+    # optional automation to code...
     loading: bool = True
-    """Pause after loading data to allow review before continuing."""
 
-    initialization: bool = True
-    """Pause after initialization to allow review of initial parameters."""
-
-    cross_correlation: bool = True
-    """Pause after cross-correlation alignment to allow review of results."""
+    complex_projections_window: bool = True
 
     phase_unwrapping: bool = True
-    """Pause after phase unwrapping to allow review and adjustment."""
 
-    phase_unwrap_masks: bool = True
-    """Pause to allow interactive mask creation for phase unwrapping."""
-
-    reconstruction_tuning: bool = True
-    """Pause to allow interactive tuning of reconstruction parameters."""
-
-    pma_masks: bool = True
-    """Pause to allow interactive mask creation for projection-matching alignment."""
-
-    projection_matching: bool = True
-    """Pause after projection matching to allow review of results."""
-
-    # final_reconstruction: bool = True
+    phase_projections_window: bool = True
 
 
 @dataclasses.dataclass
@@ -137,6 +121,9 @@ class CheckpointConfig(BaseOptions):
     enabled_checkpoints: EnabledCheckpoints = field(default_factory=EnabledCheckpoints)
     """Choose the points at which a checkpoint task will be saved"""
 
+    pin_memory_on_load: bool = False
+    """Load projection arrays and masks into pinned (page-locked) host memory for faster GPU transfers."""
+
 
 @dataclasses.dataclass
 class AutorunnerConfig(BaseOptions):
@@ -147,7 +134,6 @@ class AutorunnerConfig(BaseOptions):
     """Settings for saving and loading run checkpoints."""
 
     interactivity: InteractivityConfig = field(default_factory=InteractivityConfig)
-    """Controls which pipeline steps will pause and show an interactive GUI window."""
 
     cross_correlation_enabled: bool = True
     """Run the cross-correlation alignment step."""
@@ -186,3 +172,6 @@ class AutorunnerConfig(BaseOptions):
     projection_matching: ProjectionMatchingOptions = field(
         default_factory=ProjectionMatchingOptions
     )
+
+    load_pma_sequence_volumes: bool = True
+    """When loading a checkpoint task, also load the PMA sequence volume arrays."""
