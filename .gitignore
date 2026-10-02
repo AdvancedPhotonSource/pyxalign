@@ -14,3 +14,4 @@ docs/build*
 *.nfs*
 docs/_build/*
 dist/*
+src/pyxalign/_version.py
