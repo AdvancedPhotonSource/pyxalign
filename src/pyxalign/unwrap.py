@@ -1023,7 +1023,7 @@ def remove_ramp_using_adjacent_scans(
         angular_ranges = [(angles.min(), angles.max())]
     def in_angle_range(angle):
         for ranges in angular_ranges:
-            if angle < ranges[1] and angle > ranges[0]:
+            if angle <= ranges[1] and angle >= ranges[0]:
                 return True
         return False
 
@@ -1035,14 +1035,19 @@ def remove_ramp_using_adjacent_scans(
         sort_idx = np.arange(0, n, dtype=int)
 
     # neighbor_diffs = phase[sort_idx[1:]] - phase[sort_idx[:-1]]
+    print("pre-allocating first array...")
     updated_phase = np.zeros_like(phase)
+    print("allocated first array")
     updated_phase[sort_idx[0]] = phase[sort_idx[0]] * 1
     phase_trend = 0
     n_trend_updates = 0
     all_pk_to_pk = []
     if not low_memory_mode:
+        print("pre-allocating second array...")
         all_ramp_fits = np.zeros_like(phase)
+        print("allocated second array")
 
+    print("starting ramp fit for-loop")
     no_ramp_counter = 0
     for i in tqdm.tqdm(range(n - 1)):
         idx_ref, idx_upd = sort_idx[i], sort_idx[i + 1]
