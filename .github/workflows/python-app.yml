@@ -5,11 +5,7 @@ name: Python application
 
 on:
   push:
-      paths:
-        - 'src/**'
-        - 'tests/**'
-        - 'pyproject.toml'
-        - 'docker/Dockerfile.cuda13'
+    branches: [ "master", "development" ]
   pull_request:
     branches: [ "master", "development" ]
   workflow_dispatch:
@@ -21,12 +17,29 @@ permissions:
   contents: read
 
 jobs:
+  pre_check:
+    # Skips the expensive build/test job when this exact code  already passed 
+    # in another run - e.g. a push to development followed by a fast-forward 
+    # PR into master
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          skip_after_successful_duplicate: 'true'
+
   build:
+    needs: pre_check
+    if: needs.pre_check.outputs.should_skip != 'true'
 
     runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: setup
         run: |
